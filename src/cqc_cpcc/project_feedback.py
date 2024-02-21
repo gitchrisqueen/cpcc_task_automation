@@ -1,0 +1,311 @@
+import datetime as DT
+from pprint import pprint
+from typing import Optional, Annotated, List
+
+from docx import Document
+from docx.shared import Pt
+from langchain_core.pydantic_v1 import Field
+from langchain_openai import ChatOpenAI
+from selenium.common import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+
+from cqc_cpcc.exam_review import JavaCode
+from cqc_cpcc.utilities.AI.llm.chains import generate_feedback
+from cqc_cpcc.utilities.cpcc_utils import duo_login
+from cqc_cpcc.utilities.date import get_datetime
+from cqc_cpcc.utilities.env_constants import *
+from cqc_cpcc.utilities.logger import logger
+from cqc_cpcc.utilities.selenium_util import get_session_driver, click_element_wait_retry, \
+    get_elements_text_as_list_wait_stale, \
+    get_elements_href_as_list_wait_stale
+from cqc_cpcc.utilities.utils import are_you_satisfied, ExtendedEnum, CodeError, ErrorHolder
+
+# model = 'gpt-3.5-turbo-1106'
+# model = 'gpt-4-1106-preview'
+model = 'gpt-3.5-turbo-16k-0613'
+temperature = .2  # .2 <- More deterministic | More Creative -> .8
+llm = ChatOpenAI(temperature=temperature, model=model)
+
+
+class FeedbackType(ExtendedEnum):
+    """Enum representing various feedback types."""
+
+    """Checked for comments (indicated by // or /*) throughout the code."""
+    COMMENTS_MISSING = "The code does not include sufficient commenting throughout"
+
+    """Identified and addressed any syntax errors present."""
+    SYNTAX_ERROR = "There are syntax errors in the code"
+
+    """Scrutinized for spelling mistakes in the code."""
+    SPELLING_ERROR = "There are spelling mistakes in the code"
+
+    """Referenced any Output Alignment differences and emphasized its importance."""
+    OUTPUT_ALIGNMENT_ERROR = "There are output alignment issues in the code that will affect exam grades"
+
+    """Evaluated the programming style for adherence to language standards."""
+    PROGRAMMING_STYLE = "There are programming style issues that do not adhere to java language standards"
+
+    """Offered additional insights, knowledge, or tips."""
+    ADDITIONAL_TIPS_PROVIDED = "Additional insights regarding the code and learning"
+
+    """Feedback to reference the expected input"""
+    #EXPECTED_INPUTS = "There are missing variables or their corresponding data types in the Input column to ensure proper storage of user-entered values"
+    """Feedback to reference an ideal process"""
+    #ALGORITHM_LOGIC = "The Process column does not clearly indicate the connection between the expected inputs from the Input column and desired output from the Output column"
+    """Feedback to reference expected output"""
+    #EXPECTED_OUTPUT = "The Output column fails to show the desired outputs or maintain proper formatting for the desired outputs"
+    """Feedback to share additional insight regarding their submission as related to the instructions and example solution"""
+    #FINAL_THOUGHTS = "Additional insight regarding possible improvements"
+
+
+class Feedback(CodeError):
+    """Class representing various types of feedback for coding."""
+    error_type: Annotated[
+        FeedbackType,
+        Field(description="The type of feedback for code.")
+    ]
+
+
+class FeedbackGuide(ErrorHolder):
+    """Class representing feedback after reviewing a student's submission"""
+    all_feedback: Optional[List[Feedback]] = Field(description="List of all the feedback for the submission.")
+
+    def get_feedback_unique(self) -> None | List[Feedback]:
+        feedback_errors = None
+        if self.all_feedback is not None:
+            feedback_errors = self.get_combined_errors_by_type(self.all_feedback)
+        return feedback_errors
+
+    def set_document_style(self, document: Document):
+        style = document.styles['Heading 3']
+        font = style.font
+        font.name = 'Lato'
+        font.size = Pt(23)
+        style2 = document.styles['List Bullet 2']
+        font = style2.font
+        font.name = 'Lato'
+        font.size = Pt(19)
+        style3 = document.styles['List Bullet 3']
+        font = style3.font
+        font.name = 'Lato'
+        font.size = Pt(15)
+
+    def add_feedback_to_doc_document(self, d: Document, errors: List[CodeError]):
+        for error in errors:
+            # Add the error type
+            type_paragraph = d.add_paragraph("", style='List Bullet 2')
+            type_paragraph.add_run(str(error.error_type) + ":").italic = True
+
+            # Add the error details
+            for details in error.error_details.split("\n"):
+                details_paragraph = d.add_paragraph("", style='List Bullet 3')
+                details_paragraph.add_run(details)
+
+    def save_feedback_to_docx(self, file_path: str, pre_text: str = "", post_text: str = "",
+                              pre_post_heading_size: int = 3):
+        document = Document()
+
+        # Set the styles for the document
+        self.set_document_style(document)
+
+        feedback_list = self.get_feedback_unique()
+
+        # Add the pre-text to the document
+        if len(pre_text) > 0:
+            document.add_heading(pre_text, pre_post_heading_size)
+
+        # Add the feedback to the document
+        if len(feedback_list) > 0:
+            self.add_feedback_to_doc_document(document, feedback_list)
+
+        # Add the pre-text to the document
+        if len(post_text) > 0:
+            document.add_heading(post_text, pre_post_heading_size)
+
+        # Save the feedback to file
+        document.save(file_path)
+        print("Feedback Saved to : %s" % file_path)
+
+
+def init_page(driver: WebDriver, wait: WebDriverWait) -> str:
+    driver.get(BRIGHTSPACE_URL)
+    # Wait for title to change
+    wait.until(EC.title_is("Web Login Service"))
+
+    original_window = driver.current_window_handle
+
+    # Login
+    duo_login(driver)
+
+    # Wait for title to change
+    wait.until(EC.title_is(BRIGHTSPACE_HOMEPAGE_TITLE))
+
+    # Return the original_window
+    return original_window
+
+
+def give_project_feedback():
+    driver, wait = get_session_driver()
+
+    # original_window = init_page(driver, wait)
+
+    # Find All Courses in Brightspace
+    course_urls = get_course_urls(driver, wait)
+    logger.info("Course Urls:\n%s" % "\n".join(course_urls))
+
+    # Process submissions for each course
+    for url in course_urls:
+        process_submissions_from_course_url(driver, wait, url)
+
+    logger.info("Feedback Complete")
+
+
+def get_course_urls(driver: WebDriver, wait: WebDriverWait) -> list[str]:
+    # Click on the course menu
+    click_element_wait_retry(driver, wait, "d2l-navigation-s-course-menu", "Waiting for Course Menu", By.CLASS_NAME)
+
+    # Get the course url
+    course_links = wait.until(
+        lambda d: d.find_elements(By.XPATH,
+                                  "//div[contains(@class,'d2l-course-selector-item')]/a[contains(@class,'d2l-link') and not(contains(text(),'Sandbox'))]"),
+        "Waiting for Course Links")
+    course_urls = map(lambda b: b.get_attribute("href"), course_links)
+
+    return list(course_urls)
+
+
+def process_submissions_from_course_url(driver: WebDriver, wait: WebDriverWait, url: str):
+    handles = driver.window_handles
+
+    # Opens a new tab and switches to new tab
+    driver.switch_to.new_window('tab')
+
+    # Wait for the new window or tab
+    wait.until(EC.new_window_is_opened(handles))
+
+    # Keep track of current tab
+    # current_tab = driver.current_window_handle
+
+    # Navigate to course url
+    driver.get(url)
+
+    # Navigate to Course Tools -> Assignments
+    assignments_link = wait.until(
+        lambda d: d.find_element(By.XPATH,
+                                 "//d2l-menu-item-link[@text='Assignments' and contains(@class,'d2l-navigation-s-menu-item')]"),
+        'Waiting for Assignments link')
+    assignments_url = BRIGHTSPACE_URL + assignments_link.get_attribute('href')
+    logger.info("Assignments URL: %s", assignments_url)
+
+    driver.get(assignments_url)
+
+    # Find Projects with Past Due Dates
+    # Criteria - Name contains "Project", Has Submissions
+    try:
+        due_dates = get_elements_text_as_list_wait_stale(wait,
+                                                         "//tr[descendant::a[contains(@title,'Project')] and descendant::a[contains(@class,'d2l-link') and contains(@title,'new')]]//*[contains(text(),'Due')]",
+                                                         "Waiting on Due Dates")
+    except TimeoutException as te:
+        logger.info("No projects with new submissions. Returning...")
+        return
+
+    due_dates = list(map(lambda b: b.replace("Due on ", ""), due_dates))
+    logger.info("Due Dates:\n%s" % "\n".join(due_dates))
+
+    submission_links = get_elements_href_as_list_wait_stale(wait,
+                                                            "//tr[descendant::a[contains(@title,'Project')] and descendant::a[contains(@class,'d2l-link') and contains(@title,'new')]]//a[contains(@class,'d2l-link') and contains(@title,'new')]",
+                                                            "Waiting on submission links")
+
+    logger.info("Submission Links:\n%s" % "\n".join(submission_links))
+
+    due_date_submission_links_dict = dict(zip(due_dates, submission_links))
+    logger.info("Due Date Submission Links:\n%s" % str(due_date_submission_links_dict))
+
+    shrt_frmt = "%m/%d"
+    today = DT.date.today()
+    today_string = today.strftime(shrt_frmt)
+    yesterday = today - DT.timedelta(days=1)
+    # yesterday_string = yesterday.strftime(shrt_frmt)
+    week_ago = yesterday - DT.timedelta(days=7)
+    week_ago_string = week_ago.strftime(shrt_frmt)
+
+    for due_date in due_date_submission_links_dict:
+        proper_date = get_datetime(due_date)
+        proper_date_str = proper_date.strftime(shrt_frmt)
+        if week_ago <= proper_date.date() <= today:
+            logger.info("%s IS between %s - %s" % (proper_date_str, week_ago_string, today_string))
+            submission_link = due_date_submission_links_dict[due_date]
+            logger.info("Submission Link: %s" % submission_link)
+
+            process_submission_from_link(driver, wait, submission_link)
+        else:
+            logger.info("%s is NOT between %s - %s" % (proper_date_str, week_ago_string, today_string))
+
+    # TODO: Give feedback to missing submissions
+
+    are_you_satisfied()
+    # Close the tab
+    driver.close()
+
+
+def process_submission_from_link(driver: WebDriver, wait: WebDriverWait, url: str):
+    handles = driver.window_handles
+
+    # Opens a new tab and switches to new tab
+    driver.switch_to.new_window('tab')
+
+    # Wait for the new window or tab
+    wait.until(EC.new_window_is_opened(handles))
+
+    # Keep track of current tab
+    # current_tab = driver.current_window_handle
+
+    # Navigate to course url
+    driver.get(url)
+
+    # Loop until header numbers match i.e 17 - 17
+
+    # Download and parse the .Java Files
+
+    # TODO: Leave feedback
+
+    # TODO: Add Feedback signature to end of feedback
+    # FEEDBACK_SIGNATURE
+
+    # Save as Draft !!!
+
+    are_you_satisfied()
+    # Close the tab
+    driver.close()
+
+
+def get_feedback_guide(assignment: str,
+                       solution: str, student_submission: str, course_name: str, wrap_code_in_markdown=True) -> FeedbackGuide:
+    feedback_from_llm = generate_feedback(llm, FeedbackGuide, FeedbackType.list(), assignment, solution,
+                                          student_submission, course_name, wrap_code_in_markdown)
+
+    print("\n\nFinal Output From LLM:")
+    pprint(feedback_from_llm)
+
+    feedback_guide = FeedbackGuide.parse_obj(feedback_from_llm)
+
+    print("\n\nFinding Correct Error Line Numbers")
+    jc = JavaCode(entire_raw_code=student_submission)
+
+    if feedback_guide.all_feedback is not None:
+        for code_error in feedback_guide.all_feedback:
+            line_numbers = []
+            if code_error.code_error_lines is not None:
+                for code_line in code_error.code_error_lines:
+                    line_numbers_found = jc.get_line_number(code_line)
+                    if line_numbers_found is not None:
+                        line_numbers.extend(line_numbers_found)
+                # Return the unique list of line numbers
+                line_numbers = sorted(set(line_numbers))
+                code_error.set_line_numbers_of_error(line_numbers)
+
+
+    return feedback_guide

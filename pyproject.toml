@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "cpcc-task-automation"
+version = "0.1.0"
+description = ""
+authors = ["gitchrisqueen <christopher.queen@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "cqc_cpcc", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+os-env = "^0.3"
+selenium = "^4.17.1"
+webdriver-manager = "^4.0.1"
+#google-drive = "^0.5.1"
+typing-extensions = "^4.9.0"
+bs4 = "^0.0.2"
+pandas = "^2.2.0"
+datetime = "^5.4"
+dateparser = "^1.2.0"
+#markdownify = "^0.11.6"
+langchain = "^0.1"
+langchain-community = "^0.0"
+openai = "^1.10.0"
+ordered-set = "^4.1.0"
+langchain-openai = "^0.0"
+chromadb = "^0.4.22"
+protobuf = "^3"
+python-docx = "^1.1.0"
+#simplify_docx= { git = "https://github.com/gitchrisqueen/Simplify-Docx.git"}
+textract = "^1.6.5"
+
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+setuptools = "^67.6.1"
+#cqc_cpcc = {path = "src", develop = true}
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
