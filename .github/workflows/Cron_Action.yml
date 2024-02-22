@@ -1,0 +1,71 @@
+name: Run Cron Job  On GitHub Action
+run-name: Cron Run ${{ inputs.working-directory }} by @${{ github.actor }}
+on:
+  schedule:  #runs at 15:00 UTC / 10AM EST everyday
+    - cron: "0 7 * * *"
+  workflow_dispatch:  # Allows to trigger the workflow manually in GitHub UI
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        default: 'src'
+        description: "From which folder this pipeline executes"
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.1"
+jobs:
+  cron-run:
+    runs-on: ubuntu-latest
+    environment: Chris Queen CPCC
+    steps:
+      - name: Checking out repo
+        uses: actions/checkout@v4
+      - name: Set up Python + Poetry ${{ env.POETRY_VERSION }}
+        uses: "./.github/actions/poetry_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-key: release
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: |
+          echo "Running cron action, installing dependencies with poetry..."
+          poetry install --with=test_integration,test
+
+      # Need to fetch reqs if needed from external libraries
+      - name: Install deps outside pyproject
+        run: sudo apt-get install xvfb
+
+      #- name: Lint with flake8
+      #  run: |
+      #    # stop the build if there are Python syntax errors or undefined names
+      #    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      #    # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+      #    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: execute cron script # run file
+        shell: bash
+        env:
+          GITHUB_ACTION_TRUE: "True"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INSTRUCTOR_PASS: ${{ secrets.INSTRUCTOR_PASS }}
+          INSTRUCTOR_USERID: ${{ secrets.INSTRUCTOR_USERID }}
+          FEEDBACK_SIGNATURE: ${{ vars.FEEDBACK_SIGNATURE}}
+          HEADLESS_BROWSER : ${{ vars.HEADLESS_BROWSER }}
+          MAX_WAIT_RETRY : ${{ vars.MAX_WAIT_RETRY }}
+          RETRY_PARSER_MAX_RETRY : ${{ vars.RETRY_PARSER_MAX_RETRY }}
+          SHOW_ERROR_LINE_NUMBERS : ${{ vars.SHOW_ERROR_LINE_NUMBERS }}
+          WAIT_DEFAULT_TIMEOUT : ${{ vars.WAIT_DEFAULT_TIMEOUT }}
+        run: |
+          poetry run python cron.py
+        
+      #- name: Commit and Push The Results From Cron Action
+      #  run: |
+      #   git config --global user.name "github-actions[bot]"
+      #   git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      #   git add -A
+      #   git commit -m "GitHub Actions Results added"
+      #   git push
+
