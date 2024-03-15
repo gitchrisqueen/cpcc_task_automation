@@ -29,11 +29,8 @@ def duo_login(driver: WebDriver):
     click_element_wait_retry(driver, wait, "_eventId_proceed", "Waiting for login field", By.NAME)
 
     # Switch to Duo Iframe
-    duo_frame = wait.until(lambda d: d.find_element(By.ID, "duo_iframe"),
-                           "Waiting for Duo Iframe")
-    # driver.switch_to.frame(duo_frame)
-    # driver.implicitly_wait(5)  # wait 5 seconds
-    wait.until(EC.frame_to_be_available_and_switch_to_it(duo_frame))
+    #duo_frame = wait.until(lambda d: d.find_element(By.ID, "duo_iframe"), "Waiting for Duo Iframe")
+    #wait.until(EC.frame_to_be_available_and_switch_to_it(duo_frame))
 
     click_element_wait_retry(driver, wait, "//button[contains(text(),'Send Me a Push')]", "Waiting for auth buttons")
 

@@ -596,7 +596,9 @@ def grade_submissions():
     code_grader.save_feedback_to_docx(file_path)
 
 
-def grade_all_from_directory(exam_instructions_file: str, exam_solution_file: str, downloaded_exams_directory: str):
+def grade_all_from_directory(assignment_name: str, exam_instructions_file: str, exam_solution_file: str,
+                             downloaded_exams_directory: str, max_points: int, deduction_per_major_error: int,
+                             deduction_per_minor_error: int):
     # Get the exam instructions
     exam_instructions = read_file(exam_instructions_file)
 
@@ -610,7 +612,6 @@ def grade_all_from_directory(exam_instructions_file: str, exam_solution_file: st
     # Get all the files in the current working directory
     files = [file for file in os.listdir(downloaded_exams_directory) if file.endswith(".java")]
 
-    assignment_name = "Programming Exam 1"
     time_stamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
     # Loop through every file in directory and grade the assignment saved to a file
@@ -622,7 +623,8 @@ def grade_all_from_directory(exam_instructions_file: str, exam_solution_file: st
 
         print("Grading: %s" % student_file_name)
 
-        code_grader = CodeGrader(200, 40, 10)
+        code_grader = CodeGrader(max_points=max_points, deduction_per_major_error=deduction_per_major_error,
+                                 deduction_per_minor_error=deduction_per_minor_error)
         code_grader.grade_submission(exam_instructions, exam_solution, student_submission)
         print("\n\nGrade Feedback:\n%s" % code_grader.get_text_feedback())
 
@@ -634,21 +636,20 @@ def grade_all_from_directory(exam_instructions_file: str, exam_solution_file: st
 
 
 if __name__ == '__main__':
-    #code_grader = CodeGrader(200, 40, 10)
-    #code_grader.save_feedback_template("/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/exam1/Grading_Feedback_Template.docx")
-    #exit(0)
-
+    # code_grader = CodeGrader(200, 40, 10)
+    # code_grader.save_feedback_template("/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/exam1/Grading_Feedback_Template.docx")
+    # exit(0)
 
     grade_all_from_directory(
-        exam_instructions_file="//downloads/CSC151-N853/exam1/Exam1_Instructions.txt",
-        exam_solution_file="//downloads/CSC151-N853/exam1/Exam1_Solution.java",
-        #downloaded_exams_directory="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/exam1/submissions_test"
-        # Exception directory (belwo_
-        downloaded_exams_directory = "/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/exam1/submissions_late_exception"
-
-        # TODO: Testing directory
-        #downloaded_exams_directory="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/exam1/submissions_all"
-
+        assignment_name="CSC151-N804-Programming-Exam-1",
+        exam_instructions_file="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N804/Exam 1/Exam1_Instructions.docx",
+        exam_solution_file="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N804/Exam 1/Exam1_Solution.java",
+        #downloaded_exams_directory="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N804/Exam 1/submissions_all",
+        # Test directory (below)
+        downloaded_exams_directory="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N804/Exam 1/submissions_test",
+        max_points=200,
+        deduction_per_major_error=40,
+        deduction_per_minor_error=10
     )
 
     # jc = JavaCode(raw_code=STUDENT_SUBMISSION)

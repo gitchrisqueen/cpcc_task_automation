@@ -25,7 +25,13 @@ class MajorErrorType(ExtendedEnum):
     INSUFFICIENT_DOCUMENTATION = "No documentation or insufficient amount of comments in the code"
 
     """Errors in coding sequence and selection."""
-    SEQUENCE_AND_SELECTION_ERROR = "Errors in the sequence and selection structures in the code"
+    #SEQUENCE_AND_SELECTION_ERROR = "Errors in the sequence and selection structures in the code"
+    SEQUENCE_AND_SELECTION_ERROR_V2 = "Errors in the coding sequence, selection and looping including incorrect use of comparison operators"
+
+    #METHOD_ERRORS = """Method errors in the code such as:
+    #- passing the incorrect number of arguments
+    #- incorrect data types for arguments and parameter variables
+    #- failing to include the data type of parameter variables in the method header"""
 
     """Errors that adversely impact the output (calculation errors, omissions, etc.)."""
     OUTPUT_IMPACT_ERROR = "Errors that adversely impact the expected output, such as calculation errors or omissions"
@@ -50,7 +56,7 @@ class MinorErrorType(ExtendedEnum):
     OUTPUT_FORMATTING = "There are issues with the expected code output formatting (spacing, decimal places, etc.)"
 
     """Programming style issues (indentation, white space, etc.)."""
-    PROGRAMMING_STYLE = "There are programming style issues that do not adhere to language standards"
+    PROGRAMMING_STYLE = "There are programming style issues that do not adhere to language standards (indentation, white space, etc.)"
 
     """Error related to the use of the Scanner class."""
     SCANNER_CLASS = "There are errors related to the use of the Scanner class"
@@ -120,7 +126,7 @@ class JavaCode(BaseModel):
 
     @property
     def sufficient_amount_of_comments(self) -> bool:
-        return (self.comments_count / self.code_lines_count) > .10
+        return (self.comments_count / self.code_lines_count) > .01
 
 
 class ErrorDefinitions(ErrorHolder):
@@ -142,8 +148,8 @@ class ErrorDefinitions(ErrorHolder):
     ] = None
     """
 
-    all_major_errors: Optional[List[MajorError]] = Field(description="List of all the major code errors.")
-    all_minor_errors: Optional[List[MinorError]] = Field(description="List of all the minor code errors.")
+    all_major_errors: Optional[List[MajorError]] = Field(description="List of the major code errors found in the code.")
+    all_minor_errors: Optional[List[MinorError]] = Field(description="List of minor code errors found in the code.")
 
     def get_minor_errors_unique(self) -> None | List[MinorError]:
         minor_errors = None

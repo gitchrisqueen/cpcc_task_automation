@@ -24,17 +24,19 @@ from cqc_cpcc.utilities.selenium_util import get_session_driver, click_element_w
 from cqc_cpcc.utilities.utils import are_you_satisfied, ExtendedEnum, CodeError, ErrorHolder
 
 # model = 'gpt-3.5-turbo-1106'
-# model = 'gpt-4-1106-preview'
+#model = 'gpt-4-1106-preview'
 model = 'gpt-3.5-turbo-16k-0613'
 temperature = .2  # .2 <- More deterministic | More Creative -> .8
 llm = ChatOpenAI(temperature=temperature, model=model)
 
+COMMENTS_MISSING_STRING = "The code does not include sufficient commenting throughout"
 
 class FeedbackType(ExtendedEnum):
     """Enum representing various feedback types."""
 
+    #### ------- Below is for JAVA expected submissions ------- #####
     """Checked for comments (indicated by // or /*) throughout the code."""
-    COMMENTS_MISSING = "The code does not include sufficient commenting throughout"
+    COMMENTS_MISSING = COMMENTS_MISSING_STRING
 
     """Identified and addressed any syntax errors present."""
     SYNTAX_ERROR = "There are syntax errors in the code"
@@ -51,13 +53,15 @@ class FeedbackType(ExtendedEnum):
     """Offered additional insights, knowledge, or tips."""
     ADDITIONAL_TIPS_PROVIDED = "Additional insights regarding the code and learning"
 
-    """Feedback to reference the expected input"""
+
+    #### ------- Below is for DOCX expected submissions ------- #####
+    #"""Feedback to reference the expected input"""
     #EXPECTED_INPUTS = "There are missing variables or their corresponding data types in the Input column to ensure proper storage of user-entered values"
-    """Feedback to reference an ideal process"""
+    #"""Feedback to reference an ideal process"""
     #ALGORITHM_LOGIC = "The Process column does not clearly indicate the connection between the expected inputs from the Input column and desired output from the Output column"
-    """Feedback to reference expected output"""
+    #"""Feedback to reference expected output"""
     #EXPECTED_OUTPUT = "The Output column fails to show the desired outputs or maintain proper formatting for the desired outputs"
-    """Feedback to share additional insight regarding their submission as related to the instructions and example solution"""
+    #"""Feedback to share additional insight regarding their submission as related to the instructions and example solution"""
     #FINAL_THOUGHTS = "Additional insight regarding possible improvements"
 
 
@@ -292,20 +296,41 @@ def get_feedback_guide(assignment: str,
 
     feedback_guide = FeedbackGuide.parse_obj(feedback_from_llm)
 
-    print("\n\nFinding Correct Error Line Numbers")
-    jc = JavaCode(entire_raw_code=student_submission)
+    if COMMENTS_MISSING_STRING in FeedbackType.list():
 
-    if feedback_guide.all_feedback is not None:
-        for code_error in feedback_guide.all_feedback:
-            line_numbers = []
-            if code_error.code_error_lines is not None:
-                for code_line in code_error.code_error_lines:
-                    line_numbers_found = jc.get_line_number(code_line)
-                    if line_numbers_found is not None:
-                        line_numbers.extend(line_numbers_found)
-                # Return the unique list of line numbers
-                line_numbers = sorted(set(line_numbers))
-                code_error.set_line_numbers_of_error(line_numbers)
+        print("\n\nFinding Correct Error Line Numbers")
+        jc = JavaCode(entire_raw_code=student_submission)
 
+        if feedback_guide.all_feedback is not None:
+            unique_feedback = feedback_guide.get_feedback_unique()
+
+            for code_error in unique_feedback:
+                line_numbers = []
+                if code_error.code_error_lines is not None:
+                    for code_line in code_error.code_error_lines:
+                        line_numbers_found = jc.get_line_number(code_line)
+                        if line_numbers_found is not None:
+                            line_numbers.extend(line_numbers_found)
+                    # Return the unique list of line numbers
+                    line_numbers = sorted(set(line_numbers))
+                    code_error.set_line_numbers_of_error(line_numbers)
+
+
+            # Create Insufficient Comments if applicable
+            insufficient_comment_error = Feedback(error_type=FeedbackType.COMMENTS_MISSING,
+                                                    error_details="There is not enough comments to help others understand the purpose, functionality, and structure of the code.")
+
+            if jc.sufficient_amount_of_comments:
+                print("Found Insufficient comments error by LLM but not true so removing")
+                # Sufficient comments so remove this error type
+                unique_feedback = [x for x in unique_feedback if
+                                       x.error_type != FeedbackType.COMMENTS_MISSING]
+            elif FeedbackType.COMMENTS_MISSING not in [x.error_type for x in unique_feedback]:
+                print("Did not find Insufficient comments error by LLM but true so adding it")
+                # Insufficient comments but error type doesnt exist
+                unique_feedback.insert(0, insufficient_comment_error)
+
+            # Append the feedback back to the instance variables
+            feedback_guide.all_feedback = unique_feedback
 
     return feedback_guide

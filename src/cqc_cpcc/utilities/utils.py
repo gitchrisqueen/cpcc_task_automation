@@ -1,20 +1,21 @@
 import os.path
 from enum import Enum, StrEnum
-from pprint import pprint
-from typing import Optional, Annotated, List
-import textract
+from typing import Optional, Annotated, List, Union
 
 import docx
-#import markdownify
+# import markdownify
 import pandas as pd
+import textract
 from bs4 import BeautifulSoup
 from docx import Document
 from ordered_set import OrderedSet
 from pydantic.v1 import BaseModel, Field, StrictStr, PositiveInt
-#from simplify_docx import simplify
 
 from cqc_cpcc.utilities.date import get_datetime
 from cqc_cpcc.utilities.env_constants import *
+
+
+# from simplify_docx import simplify
 
 
 class Satisfactory(Enum):
@@ -216,19 +217,21 @@ class ErrorHolder(BaseModel):
             # Combine the code_error_lines
             try:
                 code_error_lines_list = [x.code_error_lines for x in code_errors_by_type]
-                code_error_lines_flattened_list = [line for code_error_lines_sublist in code_error_lines_list for line in
+                code_error_lines_flattened_list = [line for code_error_lines_sublist in code_error_lines_list for line
+                                                   in
                                                    code_error_lines_sublist]
             except TypeError as e:
                 code_error_lines_flattened_list = []
 
             final_errors.append(
                 CodeError(error_type=error_type,
-                          line_numbers_of_error=unique_sorted_list, # TODO: Do we need this since the line numbers come after from code???
+                          line_numbers_of_error=unique_sorted_list,
+                          # TODO: Do we need this since the line numbers come after from code???
                           error_details=error_details,
                           code_error_lines=code_error_lines_flattened_list))
 
-        #print("Final Errors by Type Combined")
-        #pprint(final_errors)
+        # print("Final Errors by Type Combined")
+        # pprint(final_errors)
 
         return final_errors
 
@@ -266,13 +269,11 @@ def merge_lists(list1, list2):
     else:
         return list1 + list2
 
-def convert_tables_to_json_in_tmp__file(doc: Document) ->str:
 
-
+def convert_tables_to_json_in_tmp__file(doc: Document) -> str:
     for table in doc.tables:
         data = [[cell.text for cell in row.cells] for row in table.rows]
         df = pd.DataFrame(data)
-
 
         # Remove the table
         t = table._element
@@ -292,8 +293,7 @@ def convert_tables_to_json_in_tmp__file(doc: Document) ->str:
     return tmp_file
 
 
-
-def read_file(file_path: str)->str:
+def read_file(file_path: str) -> str:
     """ Return the file contents in string format. If file ends in .docx will convert it to json and return"""
     file_name, file_extension = os.path.splitext(file_path)
     if file_extension == ".docx":
@@ -303,13 +303,11 @@ def read_file(file_path: str)->str:
         # Find any tables and replace with json strings
         tmp_file = convert_tables_to_json_in_tmp__file(my_doc)
 
-
-
         # coerce to JSON using the standard options
 
-        #contents = simplify(my_doc)
+        # contents = simplify(my_doc)
 
-        #contents = textract.parsers.process(file_path)
+        # contents = textract.parsers.process(file_path)
         contents = textract.process(tmp_file).decode('utf-8')
         os.remove(tmp_file)
 
@@ -320,3 +318,16 @@ def read_file(file_path: str)->str:
     return contents
 
 
+def read_files(file_paths: Union[str, List[str]]) -> str:
+    if isinstance(file_paths, str):
+        # If a single string is provided, treat it as a file path
+        return read_file(file_paths)
+    elif isinstance(file_paths, list):
+        # If a list is provided, loop through each file path and read the file
+        concatenated_content = ""
+        for path in file_paths:
+            file_content = read_file(path)
+            concatenated_content += file_content + "\n\n"  # You can customize the separator if needed
+        return concatenated_content
+    else:
+        return "Invalid input. Please provide a string or a list of strings (file paths)."

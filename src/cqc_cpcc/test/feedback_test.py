@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Union
 
 from cqc_cpcc.project_feedback import *
-from cqc_cpcc.utilities.utils import read_file
+from cqc_cpcc.utilities.utils import read_file, read_files
 
 ASSIGNMENT = """
 Instructions:
@@ -284,17 +285,17 @@ class Program {
 COURSE_NAME = "Java-151"
 
 
-def give_feedback_on_assignments(assignment_instructions_file: str, assignment_solution_file: str,
-                                 downloaded_exams_directory: str):
+def give_feedback_on_assignments(assignment_name: str, assignment_instructions_file: str, assignment_solution_file: Union[str, List[str]],
+                                 downloaded_exams_directory: str, wrap_code_in_markdown=True):
     # Get the assignment instructions
     assignment_instructions = read_file(assignment_instructions_file)
 
-    print("Assignment Instructions:\n%s" % assignment_instructions)
+    # print("Assignment Instructions:\n%s" % assignment_instructions)
 
     # Get the assignment  solution
-    assignment_solution = read_file(assignment_solution_file)
+    assignment_solution = read_files(assignment_solution_file)
 
-    print("Assignment Solutions:\n%s" % assignment_solution)
+    # print("Assignment Solutions:\n%s" % assignment_solution)
 
     allowed_file_extensions = (".java"
                                , ".docx"
@@ -303,7 +304,6 @@ def give_feedback_on_assignments(assignment_instructions_file: str, assignment_s
     # Get all the files in the current working directory
     files = [file for file in os.listdir(downloaded_exams_directory) if file.endswith(allowed_file_extensions)]
 
-    assignment_name = "CSC151-N853-ProjectPart3"
     time_stamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
     # Loop through every file in directory and grade the assignment saved to a file
@@ -313,11 +313,13 @@ def give_feedback_on_assignments(assignment_instructions_file: str, assignment_s
         student_submission = read_file(student_file_path)
 
         print("Generating Feedback for: %s" % student_file_name)
-        feedback_guide = get_feedback_guide(assignment_instructions, assignment_solution, student_submission,
-                                            COURSE_NAME, True)
+        feedback_guide = get_feedback_guide(assignment=assignment_instructions,
+                                            solution=assignment_solution,
+                                            student_submission=student_submission,
+                                            course_name=COURSE_NAME,
+                                            wrap_code_in_markdown=wrap_code_in_markdown)
 
-        feedback = "\n".join([str(x) for x in feedback_guide.get_feedback_unique()])
-
+        feedback = "\n".join([str(x) for x in feedback_guide.all_feedback])
 
         pre_feedback = "Good job submitting your assignment. "
         if len(feedback) > 0:
@@ -340,6 +342,10 @@ def give_feedback_on_assignments(assignment_instructions_file: str, assignment_s
 
 if __name__ == '__main__':
     give_feedback_on_assignments(
-        "/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart3/ProjectPart3_Instructions.docx",
-        "/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart3/ProjectPart3_Solution.java",
-        "/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart3/submissions_test")
+        assignment_name="CSC151-N853-ProjectPart5",
+        assignment_instructions_file="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart5/ProjectPart5_Instructions.docx",
+        assignment_solution_file=["/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart5/Project5_Solution.java",
+                                  "/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart5/HardwareLastname.java"],
+        downloaded_exams_directory="/Users/christopherqueen/Google Drive/CPCC/CPCC_Task_Automation/downloads/CSC151-N853/ProjectPart5/submissions_all",
+        wrap_code_in_markdown=True
+    )

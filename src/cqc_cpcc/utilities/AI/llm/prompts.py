@@ -69,6 +69,34 @@ Output Instructions:
 """
 
 CODE_ASSIGNMENT_FEEDBACK_PROMPT_BASE = """
+You are a {course_name} community college professor giving feedback on a student's submission for an assignment.
+Using the given Assignment Instructions and Example Solution, analyze the Student Submission to identify all feedback that apply. 
+Provide a detailed and informative description for each feedback identified, written constructively and referring directly to the feedback issue. 
+Provide the text from the relevant line(s) of code from the Student Submission for each feedback when appropriate, as code_error_lines. 
+Each element in code_error_lines should represent only one line of code. 
+The feedback identified should be exhaustive. 
+If an feedback type does not apply to the Student Submission, you do not need to include it.
+
+IMPORTANT: Your response must follow the Output Instructions exactly.
+
+Assignment Instructions:
+{assignment}
+
+Example Solution:
+{solution}
+
+Student Submission:
+{submission}
+
+Feedback Types:
+{feedback_types}
+
+Output Instructions:
+{format_instructions}
+"""
+
+
+CODE_ASSIGNMENT_FEEDBACK_PROMPT_BASE_v2 = """
 You are a {course_name} community college professor giving feedback on a students assignment submission.
 Using the given Assignment and given Example Solution, analyze the Student Submission to identify all feedback that applies.
 Analyze the output from the Solution as Expected Output.
