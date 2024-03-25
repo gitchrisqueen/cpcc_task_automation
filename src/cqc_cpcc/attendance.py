@@ -19,6 +19,7 @@ def login_if_needed(driver: WebDriver):
 
 class BrightSpace_Course:
     name: str
+    url: str
     term_semester: str
     term_year: str
     driver: WebDriver
@@ -34,7 +35,7 @@ class BrightSpace_Course:
         self.term_year = term_year
         self.driver = driver
         self.wait = wait
-        self.date_range_end = DT.date.today() - DT.timedelta(days=4)  # TODO: This should be 2
+        self.date_range_end = DT.date.today() - DT.timedelta(days=2)  # TODO: This should be 2
         self.date_range_start = self.date_range_end - DT.timedelta(days=7)  # TODO: This should be 7
         self.attendance_records = {}
         self.open_course_tab()
@@ -107,12 +108,13 @@ class BrightSpace_Course:
         course_link = self.wait.until(
             lambda d: d.find_element(By.XPATH, xpath_expression),
             "Waiting for Course Links")
-        course_url = course_link.get_attribute("href")
+        self.url = course_link.get_attribute("href")
         # course_url = brightspace_url + href_value
-        logger.info("Course URL: %s" % course_url)
+        logger.info("Course Name: %s" % self.name)
+        logger.info("Course URL: %s" % self.url)
 
         # Navigate to course url
-        self.driver.get(course_url)
+        self.driver.get(self.url)
 
     def click_course_tools_link(self):
         """Click the Course Tools link"""
@@ -290,8 +292,8 @@ class BrightSpace_Course:
         else:
             # Get the links from due dates within the range
             # Constructing the dynamic XPath expression
-            xpath_expression = "//th[..//span[contains(@class,'ds_b') and (" + " or ".join(
-                ["contains(.//text(), '{}')".format(d_date) for d_date in
+            xpath_expression = "//th[.//span[contains(@class,'ds_b') and (" + " or ".join(
+                ["contains(text(), '{}')".format(d_date) for d_date in
                  due_dates]) + ")]]/a[contains(@class,'d2l-link')]"
 
             # logger.info("Quizzes Links XPath: %s" % xpath_expression)
@@ -439,8 +441,8 @@ class BrightSpace_Course:
         else:
             # Get the links from due dates within the range
             # Constructing the dynamic XPath expression
-            xpath_expression = "//tr[..//abbr[" + " or ".join(
-                ["contains(.//text(), '{}')".format(d_date) for d_date in
+            xpath_expression = "//tr[.//abbr[" + " or ".join(
+                ["contains(text(), '{}')".format(d_date) for d_date in
                  latest_post_dates]) + "]]//a[contains(@class,'d2l-linkheading-link')]"
 
             discussion_links = get_elements_href_as_list_wait_stale(self.wait, xpath_expression,
@@ -733,8 +735,19 @@ def take_attendance():
 
     mc.process_attendance()
 
+    # Update the Attendance Tracker
+    update_attendance_tracker()
+
     logger.info("Finished Attendance")
     driver.quit()
+
+
+def update_attendance_tracker():
+    """ For each class look at the withdrawal list and update the attendance tracker"""
+    # TODO: Write code for this
+
+    # TODO: Check if class is beyond the last withdrawal dates
+
 
 
 def normalize_attendance_records(attendance_records: dict) -> dict:

@@ -21,7 +21,17 @@ def test_bright_space_course_class():
 
     bsc = AT.BrightSpace_Course("CSC-151-N804: Java Programming", "Spring", "2024", driver, wait)
 
+def test_date_xpression():
+    latest_post_dates = ["03-16-2024"]
+    xpath_expression = "//tr[..//abbr[" + " or ".join(
+        ["contains(.//text(), '{}')".format(d_date) for d_date in
+         latest_post_dates]) + "]]//a[contains(@class,'d2l-linkheading-link')]"
+    print(xpath_expression)
+
+
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    test_bright_space_course_class()
+    test_date_xpression()
+    #test_bright_space_course_class()
