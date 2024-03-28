@@ -31,3 +31,4 @@ if st.button("Save"):
         st.session_state.instructor_user_id = os.environ["INSTRUCTOR_USERID"] = instructor_user_id
         st.session_state.instructor_password = os.environ["INSTRUCTOR_PASS"] = instructor_password
         st.session_state.instructor_signature = os.environ["FEEDBACK_SIGNATURE"] = instructor_signature
+        st.success("Settings Saved")
