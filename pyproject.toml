@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
 os-env = "^0.3"
 selenium = "^4.17.1"
 webdriver-manager = "^4.0.1"
@@ -32,6 +32,7 @@ python-docx = "^1.1.0"
 textract = "^1.6.5"
 chromedriver-autoinstaller = "^0.6.4"
 pyvirtualdisplay = "^3.0"
+streamlit = "^1.32.2"
 
 
 [tool.poetry.group.lint]

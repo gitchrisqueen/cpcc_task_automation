@@ -9,7 +9,7 @@ if 'openai_api_key' not in st.session_state:
 
 # TODO: Initialize other session state variables - the ones you need in .env
 
-st.set_page_config(page_title="Home", page_icon="🦜️🔗") # TODO: Change the page icon
+st.set_page_config(page_title="CPCC Task Automation", page_icon="🦜️🔗") # TODO: Change the page icon
 
 st.header("Welcome to CPCC Task Automation! 👋")
 
