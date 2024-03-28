@@ -73,7 +73,7 @@ solution_file_path = upload_solution()
 st.header("Feedback Types")
 feedback_types = define_feedback_types()
 # Show success message if feedback types are defined
-if feedback_types:
+if not feedback_types.empty:
     st.success("Feedback types defined.")
 
 if st.button('Display Feedback Types List'):
