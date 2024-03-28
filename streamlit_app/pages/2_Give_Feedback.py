@@ -1,15 +1,16 @@
 #  Copyright (c) 2024. Christopher Queen Consulting LLC (http://www.ChristopherQueenConsulting.com/)
 
-import streamlit as st
 import tempfile
+
 import pandas as pd
-import os
+import streamlit as st
 
 from cqc_cpcc.project_feedback import FeedbackType
 
-st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗") # TODO: Change the page icon
+st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO: Change the page icon
 
 st.markdown("""Here we will give feedback to student project submissions""")
+
 
 def upload_instructions():
     uploaded_file = st.file_uploader("Upload Assignment Instructions", type=["txt", "docx", "pdf"])
@@ -20,6 +21,7 @@ def upload_instructions():
         temp_file.write(uploaded_file.getvalue())
         temp_file.close()
         return temp_file.name
+
 
 def upload_solution():
     uploaded_file = st.file_uploader("Upload Assignment Solution", type=["txt", "docx", "pdf", "java", "zip"])
@@ -40,38 +42,27 @@ def define_feedback_types():
         {"Name": "COMMENTS_MISSING", "Description": "The code does not include sufficient commenting throughout"},
         {"Name": "SYNTAX_ERROR", "Description": "There are syntax errors in the code"},
         {"Name": "SPELLING_ERROR", "Description": "There are spelling mistakes in the code"},
-        {"Name": "OUTPUT_ALIGNMENT_ERROR", "Description": "There are output alignment issues in the code that will affect exam grades"},
-        {"Name": "PROGRAMMING_STYLE", "Description": "There are programming style issues that do not adhere to java language standards"},
+        {"Name": "OUTPUT_ALIGNMENT_ERROR",
+         "Description": "There are output alignment issues in the code that will affect exam grades"},
+        {"Name": "PROGRAMMING_STYLE",
+         "Description": "There are programming style issues that do not adhere to java language standards"},
         {"Name": "ADDITIONAL_TIPS_PROVIDED", "Description": "Additional insights regarding the code and learning"},
     ]
     feedback_types_df = pd.DataFrame(default_data)
 
     # Allow users to edit the table
-    st.dataframe(feedback_types_df, hide_index=True)
+    edited_df = st.data_editor(feedback_types_df, key='feedback_types', hide_index=True,
+                               num_rows="dynamic",
+                               config={
+                                   'Name': st.column_config.TextColumn('Name (required)', required=True),
+                                   'Description': st.column_config.TextColumn('Description (required)', required=True),
+                               }
+                               )  # 👈 An editable dataframe
 
-    # Add a new row button
-    if st.button("Add Feedback Type"):
-        feedback_types_df = feedback_types_df.append({"Name": "", "Description": ""}, ignore_index=True)
+    return edited_df
 
-    # Allow users to delete rows
-    rows_to_delete_options = feedback_types_df['Name'].unique().tolist()
-    rows_to_delete = st.multiselect("Select Rows to Delete", rows_to_delete_options)
 
-    if len(rows_to_delete) > 0:
-        feedback_types_df = feedback_types_df.drop(index=rows_to_delete)
-
-    # Convert DataFrame to list of FeedbackType objects
-    feedback_types_list = []
-    for _, row in feedback_types_df.iterrows():
-        name = row["Name"]
-        description = row["Description"]
-        feedback_types_list.append(FeedbackType(name, description))
-
-    # Show success message if feedback types are defined
-    if feedback_types_list:
-        st.success("Feedback types defined.")
-
-    return feedback_types_list
+ # Add elements to page to work with
 
 st.header("Instructions File")
 instructions_file_path = upload_instructions()
@@ -80,13 +71,24 @@ st.header("Solution File")
 solution_file_path = upload_solution()
 
 st.header("Feedback Types")
-feedback_types_list = define_feedback_types()
-if feedback_types_list:
+feedback_types = define_feedback_types()
+# Show success message if feedback types are defined
+if feedback_types:
+    st.success("Feedback types defined.")
+
+if st.button('Display Feedback Types List'):
+    # Convert DataFrame to list of FeedbackType objects
+    feedback_types_list = []
+    for _, row in feedback_types.iterrows():
+        name = row["Name"]
+        description = row["Description"]
+        feedback_types_list.append(FeedbackType(name, description))
     st.write("Feedback Types:", feedback_types_list)
+
+
 
 if instructions_file_path and solution_file_path:
     st.write("Both instructions file and solution file have been uploaded successfully.")
     # Perform other operations with the uploaded files
     # For example, you can pass the file paths to other functions or libraries
     # After processing, the temporary files will be automatically deleted
-
