@@ -20,7 +20,7 @@ def get_constanct_from_env(key: str, required: bool = False, default_value: str 
 
 # Get constants from GitHub Actions
 try:
-    IS_GITHUB_ACTION = isTrue(get_constanct_from_env('GITHUB_ACTION_TRUE'))
+    IS_GITHUB_ACTION = isTrue(get_constanct_from_env('GITHUB_ACTION_TRUE', default_value='False'))
 except KeyError:
     IS_GITHUB_ACTION = False
 
