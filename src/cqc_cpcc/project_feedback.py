@@ -31,7 +31,11 @@ llm = ChatOpenAI(temperature=temperature, model=model)
 
 COMMENTS_MISSING_STRING = "The code does not include sufficient commenting throughout"
 
+
 class FeedbackType(ExtendedEnum):
+    pass
+
+class DefaultFeedbackType(ExtendedEnum):
     """Enum representing various feedback types."""
 
     #### ------- Below is for JAVA expected submissions ------- #####
@@ -68,7 +72,7 @@ class FeedbackType(ExtendedEnum):
 class Feedback(CodeError):
     """Class representing various types of feedback for coding."""
     error_type: Annotated[
-        FeedbackType,
+        DefaultFeedbackType,
         Field(description="The type of feedback for code.")
     ]
 
@@ -288,7 +292,7 @@ def process_submission_from_link(driver: WebDriver, wait: WebDriverWait, url: st
 
 def get_feedback_guide(assignment: str,
                        solution: str, student_submission: str, course_name: str, wrap_code_in_markdown=True) -> FeedbackGuide:
-    feedback_from_llm = generate_feedback(llm, FeedbackGuide, FeedbackType.list(), assignment, solution,
+    feedback_from_llm = generate_feedback(llm, FeedbackGuide, DefaultFeedbackType.list(), assignment, solution,
                                           student_submission, course_name, wrap_code_in_markdown)
 
     print("\n\nFinal Output From LLM:")
@@ -296,7 +300,7 @@ def get_feedback_guide(assignment: str,
 
     feedback_guide = FeedbackGuide.parse_obj(feedback_from_llm)
 
-    if COMMENTS_MISSING_STRING in FeedbackType.list():
+    if COMMENTS_MISSING_STRING in DefaultFeedbackType.list():
 
         print("\n\nFinding Correct Error Line Numbers")
         jc = JavaCode(entire_raw_code=student_submission)
@@ -317,15 +321,15 @@ def get_feedback_guide(assignment: str,
 
 
             # Create Insufficient Comments if applicable
-            insufficient_comment_error = Feedback(error_type=FeedbackType.COMMENTS_MISSING,
-                                                    error_details="There is not enough comments to help others understand the purpose, functionality, and structure of the code.")
+            insufficient_comment_error = Feedback(error_type=DefaultFeedbackType.COMMENTS_MISSING,
+                                                  error_details="There is not enough comments to help others understand the purpose, functionality, and structure of the code.")
 
             if jc.sufficient_amount_of_comments:
                 print("Found Insufficient comments error by LLM but not true so removing")
                 # Sufficient comments so remove this error type
                 unique_feedback = [x for x in unique_feedback if
-                                       x.error_type != FeedbackType.COMMENTS_MISSING]
-            elif FeedbackType.COMMENTS_MISSING not in [x.error_type for x in unique_feedback]:
+                                   x.error_type != DefaultFeedbackType.COMMENTS_MISSING]
+            elif DefaultFeedbackType.COMMENTS_MISSING not in [x.error_type for x in unique_feedback]:
                 print("Did not find Insufficient comments error by LLM but true so adding it")
                 # Insufficient comments but error type doesnt exist
                 unique_feedback.insert(0, insufficient_comment_error)
