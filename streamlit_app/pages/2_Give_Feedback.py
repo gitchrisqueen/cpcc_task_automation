@@ -105,13 +105,15 @@ if instructions_file_path and solution_file_path and student_submission_file_pat
     # After processing, the temporary files will be automatically deleted
 
     student_file_name, student_file_extension = os.path.splitext(student_submission_file_path)
+    base_student_filename = os.path.basename(student_submission_file_path)
 
     # TODO: Create the feedback item - Make this chattable so that the instructor can make changes
-    print("Generating Feedback for: %s" % student_file_name)
+
+    print("Generating Feedback for: %s" % base_student_filename)
      # Create the custom llm
     custom_llm = ChatOpenAI(temperature=temperature, model=selected_model)
 
-    st.write("Instruction File Path: %s" % instructions_file_path)
+    #st.write("Instruction File Path: %s" % instructions_file_path)
     assignment_instructions = read_file(instructions_file_path)
     assignment_solution = read_file(solution_file_path)
     student_submission = read_file(student_submission_file_path)
