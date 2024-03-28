@@ -15,8 +15,8 @@ st.markdown("""Here we will give feedback to student project submissions""")
 
 def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], success_message: bool = True):
     uploaded_file = st.file_uploader(uploader_text, type=accepted_file_types)
-    file_extension = os.path.splitext(uploaded_file.name)[1]
     if uploaded_file is not None:
+        file_extension = os.path.splitext(uploaded_file.name)[1]
         if success_message:
             st.success("File uploaded successfully.")
         # Create a temporary file to store the uploaded instructions
