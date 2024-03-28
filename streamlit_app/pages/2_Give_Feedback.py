@@ -21,7 +21,7 @@ def upload_instructions():
         # Create a temporary file to store the uploaded instructions
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         temp_file.write(uploaded_file.getvalue())
-        temp_file.close()
+        #temp_file.close()
         return temp_file.name
 
 
@@ -32,7 +32,7 @@ def upload_solution():
         # Create a temporary file to store the uploaded solution
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         temp_file.write(uploaded_file.getvalue())
-        temp_file.close()
+        #temp_file.close()
         return temp_file.name
 
 
@@ -43,14 +43,14 @@ def upload_student_submission():
         # Create a temporary file to store the uploaded solution
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         temp_file.write(uploaded_file.getvalue())
-        temp_file.close()
+        #temp_file.close()
         return temp_file.name
 
 
 def define_feedback_types():
     st.header("Define Feedback Types")
 
-    # Pre-load the table with default rows and values
+    # Preload the table with default rows and values
     default_data = [
         {"Name": "COMMENTS_MISSING", "Description": "The code does not include sufficient commenting throughout"},
         {"Name": "SYNTAX_ERROR", "Description": "There are syntax errors in the code"},
