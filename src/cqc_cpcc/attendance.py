@@ -96,7 +96,7 @@ class BrightSpace_Course:
 
         # Constructing the dynamic XPath expression
         xpath_expression = "//a[" + " and ".join(
-            ["contains(text(), '{}')".format(element) for element in result_array]) + "]"
+            ['contains(text(), "{}")'.format(element) for element in result_array]) + "]"
 
         # logger.info("Searching for: %s" % xpath_expression)
 
@@ -293,7 +293,7 @@ class BrightSpace_Course:
             # Get the links from due dates within the range
             # Constructing the dynamic XPath expression
             xpath_expression = "//th[.//span[contains(@class,'ds_b') and (" + " or ".join(
-                ["contains(text(), '{}')".format(d_date) for d_date in
+                ['contains(text(), "{}")'.format(d_date) for d_date in
                  due_dates]) + ")]]/a[contains(@class,'d2l-link')]"
 
             # logger.info("Quizzes Links XPath: %s" % xpath_expression)
@@ -442,7 +442,7 @@ class BrightSpace_Course:
             # Get the links from due dates within the range
             # Constructing the dynamic XPath expression
             xpath_expression = "//tr[.//abbr[" + " or ".join(
-                ["contains(text(), '{}')".format(d_date) for d_date in
+                ['contains(text(), "{}")'.format(d_date) for d_date in
                  latest_post_dates]) + "]]//a[contains(@class,'d2l-linkheading-link')]"
 
             discussion_links = get_elements_href_as_list_wait_stale(self.wait, xpath_expression,
@@ -691,7 +691,7 @@ class MyColleges:
         success = False
         present_value = 'P'
         xpath1_select = ("//table[@id='student-attendance-table']//tr[descendant::div[" + " and ".join(
-            ["contains(text(), '{}')".format(element) for element in
+            ['contains(text(), "{}")'.format(element) for element in
              full_name.split(" ")]) + "]]//td[contains(@data-role,'OCLS')]//select")
         xpath2_select = xpath1_select.replace("OCLS", "OLAB")
 
