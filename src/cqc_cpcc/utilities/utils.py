@@ -12,7 +12,7 @@ from ordered_set import OrderedSet
 from pydantic.v1 import BaseModel, Field, StrictStr, PositiveInt
 
 from cqc_cpcc.utilities.date import get_datetime
-from cqc_cpcc.utilities.env_constants import *
+
 
 
 # from simplify_docx import simplify
@@ -169,8 +169,9 @@ class CodeError(BaseModel):
             return sorted(set(self.line_numbers_of_error_holder))
 
     def __str__(self):
+        import cqc_cpcc.utilities.env_constants as EC
         lines_string_complete = ""
-        if SHOW_ERROR_LINE_NUMBERS and self.line_numbers_of_errors is not None:
+        if EC.SHOW_ERROR_LINE_NUMBERS and self.line_numbers_of_errors is not None:
             lines_string = ", ".join(map(str, self.line_numbers_of_errors))
             lines_string_complete = f"\n\tOn Line(s) #: {lines_string}"
         error_details_string = "\t" + self.error_details.replace("\n", "\n\t")
