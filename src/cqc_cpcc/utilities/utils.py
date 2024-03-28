@@ -289,7 +289,7 @@ def convert_tables_to_json_in_tmp__file(doc: Document) -> str:
         t._t = t._element = None
 
     # Save to temp file
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='docx')
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
     doc.save(temp_file.name)
 
     return temp_file.name
@@ -310,6 +310,7 @@ def read_file(file_path: str) -> str:
         # contents = simplify(my_doc)
 
         # contents = textract.parsers.process(file_path)
+        print("Extracting contents from: %s" % tmp_file)
         contents = textract.process(tmp_file).decode('utf-8')
         os.remove(tmp_file)
 
