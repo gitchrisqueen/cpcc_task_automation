@@ -15,9 +15,8 @@ st.caption("*Required for all apps")
 instructor_password = st.text_input("Instructor Password", value=st.session_state.instructor_password, type="password")
 st.caption("*Required for all apps")
 
-# instructor_signature = st.text_input("Instructor Signature", value="Your Instructor" if st.session_state.instructor_signature is None else st.session_state.instructor_signature)
-instructor_signature = st.text_input("Instructor Signature",
-                                     value=st.session_state.get("instructor_signature", "Your Instructor"))
+instructor_signature = st.text_input("Instructor Signature", value=st.session_state.instructor_signature)
+st.caption("Used at end of feedback.")
 
 required_vars = [openai_api_key, instructor_user_id, instructor_password, instructor_signature]
 

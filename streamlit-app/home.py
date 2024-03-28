@@ -8,6 +8,15 @@ from cqc_cpcc.utilities.utils import read_file
 if 'openai_api_key' not in st.session_state:
 	st.session_state.openai_api_key = ""
 
+if 'instructor_user_id' not in st.session_state:
+	st.session_state.instructor_user_id = ""
+
+if 'instructor_password' not in st.session_state:
+	st.session_state.instructor_password = ""
+
+if 'instructor_signature' not in st.session_state:
+	st.session_state.instructor_signature = "- Your Instructor"
+
 # TODO: Initialize other session state variables - the ones you need in .env
 
 st.set_page_config(page_title="CPCC Task Automation", page_icon="🦜️🔗") # TODO: Change the page icon
