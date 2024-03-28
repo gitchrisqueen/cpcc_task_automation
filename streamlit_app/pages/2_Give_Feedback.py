@@ -103,11 +103,6 @@ if st.button('Display Feedback Types List'):
         feedback_types_list.append(FeedbackType(name, description))
     st.write("Feedback Types:", feedback_types_list)
 
-st.header("Student Submission File(s)")
-student_submission_file_path = upload_student_submission()
-# Checkbox for enabling Markdown wrapping
-wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
-
 # Dropdown for selecting ChatGPT models
 default_option = "gpt-3.5-turbo-16k-0613"
 model_options = [default_option, "gpt-4-1106-preview"]
@@ -117,6 +112,13 @@ selected_model = st.selectbox("Select ChatGPT Model", model_options, index=model
 default_value = 0.2
 temperature = st.slider("Chat GPT Temperature", min_value=0.2, max_value=0.8, step=0.01, value=default_value,
                            format="%.2f")
+
+
+st.header("Student Submission File(s)")
+student_submission_file_path = upload_student_submission()
+# Checkbox for enabling Markdown wrapping
+wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
+
 
 if instructions_file_path and solution_file_path and student_submission_file_path:
     st.write("All required file have been uploaded successfully.")
@@ -129,6 +131,8 @@ if instructions_file_path and solution_file_path and student_submission_file_pat
     print("Generating Feedback for: %s" % student_file_name)
      # Create the custom llm
     custom_llm = ChatOpenAI(temperature=temperature, model=selected_model)
+
+    st.write("Instruction File Path: %s" % instructions_file_path)
     assignment_instructions = read_file(instructions_file_path)
     assignment_solution = read_file(solution_file_path)
     student_submission = read_file(student_submission_file_path)
