@@ -29,10 +29,10 @@ chromadb = "^0.4.22"
 protobuf = "^3"
 python-docx = "^1.1.0"
 #simplify_docx= { git = "https://github.com/gitchrisqueen/Simplify-Docx.git"}
-textract = "^1.6.5"
 chromedriver-autoinstaller = "^0.6.4"
 pyvirtualdisplay = "^3.0"
 streamlit = "^1.32.2"
+textract = "^1.6.5"
 
 
 [tool.poetry.group.lint]
