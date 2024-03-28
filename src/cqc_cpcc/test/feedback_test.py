@@ -326,7 +326,7 @@ def give_feedback_on_assignments(assignment_name: str, assignment_instructions_f
             pre_feedback = pre_feedback + "Here is my feedback:\n\n"
         else:
             pre_feedback = pre_feedback + "I find no issues with your submission. Keep up the good work!"
-        post_feedback = "\n\n" + FEEDBACK_SIGNATURE
+        post_feedback = "\n\n - " + FEEDBACK_SIGNATURE
         print("\n\n" + pre_feedback + feedback + post_feedback)
 
         file_path = f"./logs/{assignment_name}_{student_file_name}-{model}_temp({str(temperature)})-{time_stamp}.txt".replace(

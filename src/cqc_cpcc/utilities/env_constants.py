@@ -33,7 +33,7 @@ WAIT_DEFAULT_TIMEOUT = float(get_constanct_from_env('WAIT_DEFAULT_TIMEOUT', defa
 MAX_WAIT_RETRY = int(get_constanct_from_env('MAX_WAIT_RETRY', default_value='2'))
 RETRY_PARSER_MAX_RETRY = int(get_constanct_from_env('RETRY_PARSER_MAX_RETRY', default_value='5'))
 SHOW_ERROR_LINE_NUMBERS = isTrue(get_constanct_from_env('SHOW_ERROR_LINE_NUMBERS', default_value='False'))
-FEEDBACK_SIGNATURE = get_constanct_from_env('FEEDBACK_SIGNATURE', default_value='- Your Instructor')
+FEEDBACK_SIGNATURE = get_constanct_from_env('FEEDBACK_SIGNATURE', default_value='Your Instructor')
 
 # Set other constants
 BRIGHTSPACE_URL = "https://brightspace.cpcc.edu"

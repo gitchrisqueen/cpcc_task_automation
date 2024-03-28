@@ -1,11 +1,13 @@
 #  Copyright (c) 2024. Christopher Queen Consulting LLC (http://www.ChristopherQueenConsulting.com/)
-
+import os
 import tempfile
 
 import pandas as pd
 import streamlit as st
+from langchain_openai import ChatOpenAI
 
-from cqc_cpcc.project_feedback import FeedbackType
+from cqc_cpcc.project_feedback import FeedbackType, get_feedback_guide
+from cqc_cpcc.utilities.utils import read_file
 
 st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO: Change the page icon
 
@@ -25,6 +27,17 @@ def upload_instructions():
 
 def upload_solution():
     uploaded_file = st.file_uploader("Upload Assignment Solution", type=["txt", "docx", "pdf", "java", "zip"])
+    if uploaded_file is not None:
+        st.success("File uploaded successfully.")
+        # Create a temporary file to store the uploaded solution
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.write(uploaded_file.getvalue())
+        temp_file.close()
+        return temp_file.name
+
+
+def upload_student_submission():
+    uploaded_file = st.file_uploader("Upload Student Submission", type=["txt", "docx", "pdf", "java", "zip"])
     if uploaded_file is not None:
         st.success("File uploaded successfully.")
         # Create a temporary file to store the uploaded solution
@@ -54,7 +67,9 @@ def define_feedback_types():
     edited_df = st.data_editor(feedback_types_df, key='feedback_types', hide_index=True,
                                num_rows="dynamic",
                                column_config={
-                                   'Name': st.column_config.TextColumn('Name (required)', help='Uppercase and Underscores only', validate="^[A-Z_]+$", required=True),
+                                   'Name': st.column_config.TextColumn('Name (required)',
+                                                                       help='Uppercase and Underscores only',
+                                                                       validate="^[A-Z_]+$", required=True),
                                    'Description': st.column_config.TextColumn('Description (required)', required=True)
                                }
                                )  # 👈 An editable dataframe
@@ -62,7 +77,10 @@ def define_feedback_types():
     return edited_df
 
 
- # Add elements to page to work with
+# Add elements to page to work with
+
+ # Text input for entering a course name
+course_name = st.text_input("Enter Course Name")
 
 st.header("Instructions File")
 instructions_file_path = upload_instructions()
@@ -85,10 +103,54 @@ if st.button('Display Feedback Types List'):
         feedback_types_list.append(FeedbackType(name, description))
     st.write("Feedback Types:", feedback_types_list)
 
+st.header("Student Submission File(s)")
+student_submission_file_path = upload_student_submission()
+student_file_name, student_file_extension = os.path.splitext(student_submission_file_path)
+# Checkbox for enabling Markdown wrapping
+wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
 
+# Dropdown for selecting ChatGPT models
+default_option = "gpt-3.5-turbo-16k-0613"
+model_options = [default_option, "gpt-4-1106-preview"]
+selected_model = st.selectbox("Select ChatGPT Model", model_options, index=model_options.index(default_option))
 
-if instructions_file_path and solution_file_path:
-    st.write("Both instructions file and solution file have been uploaded successfully.")
+# Slider for selecting a value (ranged from 0.2 to 0.8, with step size 0.01)
+default_value = 0.2
+temperature = st.slider("Chat GPT Temperature", min_value=0.2, max_value=0.8, step=0.01, value=default_value,
+                           format="%.2f")
+
+if instructions_file_path and solution_file_path and student_submission_file_path:
+    st.write("All required file have been uploaded successfully.")
     # Perform other operations with the uploaded files
     # For example, you can pass the file paths to other functions or libraries
     # After processing, the temporary files will be automatically deleted
+
+    # TODO: Create the feedback item - Make this chattable so that the instructor can make changes
+    print("Generating Feedback for: %s" % student_file_name)
+     # Create the custom llm
+    custom_llm = ChatOpenAI(temperature=temperature, model=selected_model)
+    assignment_instructions = read_file(instructions_file_path)
+    assignment_solution = read_file(solution_file_path)
+    student_submission = read_file(student_submission_file_path)
+
+    feedback_guide = get_feedback_guide(assignment=assignment_instructions,
+                                        solution=assignment_solution,
+                                        student_submission=student_submission,
+                                        course_name=course_name,
+                                        wrap_code_in_markdown=wrap_code_in_markdown,
+                                        custom_llm=custom_llm
+                                        )
+
+    # Output feedback to log and streamlit
+    feedback = "\n".join([str(x) for x in feedback_guide.all_feedback])
+
+    pre_feedback = "Good job submitting your assignment. "
+    if len(feedback) > 0:
+        pre_feedback = pre_feedback + "Here is my feedback:\n\n"
+    else:
+        pre_feedback = pre_feedback + "I find no issues with your submission. Keep up the good work!"
+    post_feedback = "\n\n - " + st.session_state.instructor_signature
+    print("\n\n" + pre_feedback + feedback + post_feedback)
+
+    # Display text output TODO: Look into other format options. Markdown is allowed
+    st.text(pre_feedback + feedback + post_feedback)

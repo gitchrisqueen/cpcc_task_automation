@@ -71,8 +71,9 @@ class DefaultFeedbackType(ExtendedEnum):
 
 class Feedback(CodeError):
     """Class representing various types of feedback for coding."""
+    # DefaultFeedbackType,
     error_type: Annotated[
-        DefaultFeedbackType,
+        FeedbackType,
         Field(description="The type of feedback for code.")
     ]
 
@@ -80,6 +81,9 @@ class Feedback(CodeError):
 class FeedbackGuide(ErrorHolder):
     """Class representing feedback after reviewing a student's submission"""
     all_feedback: Optional[List[Feedback]] = Field(description="List of all the feedback for the submission.")
+
+
+
 
     def get_feedback_unique(self) -> None | List[Feedback]:
         feedback_errors = None
@@ -291,8 +295,12 @@ def process_submission_from_link(driver: WebDriver, wait: WebDriverWait, url: st
 
 
 def get_feedback_guide(assignment: str,
-                       solution: str, student_submission: str, course_name: str, wrap_code_in_markdown=True) -> FeedbackGuide:
-    feedback_from_llm = generate_feedback(llm, FeedbackGuide, DefaultFeedbackType.list(), assignment, solution,
+                       solution: str, student_submission: str, course_name: str, wrap_code_in_markdown=True, custom_llm = None) -> FeedbackGuide:
+
+    if custom_llm is None:
+        custom_llm = llm
+
+    feedback_from_llm = generate_feedback(custom_llm, FeedbackGuide, DefaultFeedbackType.list(), assignment, solution,
                                           student_submission, course_name, wrap_code_in_markdown)
 
     print("\n\nFinal Output From LLM:")
