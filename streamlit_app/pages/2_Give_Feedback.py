@@ -54,8 +54,8 @@ def define_feedback_types():
         feedback_types_df = feedback_types_df.append({"Name": "", "Description": ""}, ignore_index=True)
 
     # Allow users to delete rows
-    #rows_to_delete = st.multiselect("Select Rows to Delete", feedback_types_df.multiselect)
-    rows_to_delete = feedback_types_df['Name'].unique().tolist()
+    rows_to_delete_options = feedback_types_df['Name'].unique().tolist()
+    rows_to_delete = st.multiselect("Select Rows to Delete", rows_to_delete_options)
 
     if len(rows_to_delete) > 0:
         feedback_types_df = feedback_types_df.drop(index=rows_to_delete)
