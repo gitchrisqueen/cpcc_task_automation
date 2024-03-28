@@ -15,7 +15,7 @@ if 'instructor_password' not in st.session_state:
 	st.session_state.instructor_password = ""
 
 if 'instructor_signature' not in st.session_state:
-	st.session_state.instructor_signature = "- Your Instructor"
+	st.session_state.instructor_signature = "Your Instructor"
 
 # TODO: Initialize other session state variables - the ones you need in .env
 
