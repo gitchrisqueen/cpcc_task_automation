@@ -14,6 +14,6 @@ st.set_page_config(page_title="CPCC Task Automation", page_icon="🦜️🔗") #
 st.header("Welcome to CPCC Task Automation! 👋")
 
 # Get the ReadMe Markdown and display it
-readme_markdown = read_file("README.md")
+readme_markdown = read_file("../README.md")
 
 st.markdown(readme_markdown)
