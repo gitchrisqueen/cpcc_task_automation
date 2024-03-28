@@ -53,9 +53,9 @@ def define_feedback_types():
     # Allow users to edit the table
     edited_df = st.data_editor(feedback_types_df, key='feedback_types', hide_index=True,
                                num_rows="dynamic",
-                               config={
+                               column_config={
                                    'Name': st.column_config.TextColumn('Name (required)', required=True),
-                                   'Description': st.column_config.TextColumn('Description (required)', required=True),
+                                   'Description': st.column_config.TextColumn('Description (required)', required=True)
                                }
                                )  # 👈 An editable dataframe
 
