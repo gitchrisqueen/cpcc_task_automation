@@ -105,7 +105,6 @@ if st.button('Display Feedback Types List'):
 
 st.header("Student Submission File(s)")
 student_submission_file_path = upload_student_submission()
-student_file_name, student_file_extension = os.path.splitext(student_submission_file_path)
 # Checkbox for enabling Markdown wrapping
 wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
 
@@ -122,8 +121,9 @@ temperature = st.slider("Chat GPT Temperature", min_value=0.2, max_value=0.8, st
 if instructions_file_path and solution_file_path and student_submission_file_path:
     st.write("All required file have been uploaded successfully.")
     # Perform other operations with the uploaded files
-    # For example, you can pass the file paths to other functions or libraries
     # After processing, the temporary files will be automatically deleted
+
+    student_file_name, student_file_extension = os.path.splitext(student_submission_file_path)
 
     # TODO: Create the feedback item - Make this chattable so that the instructor can make changes
     print("Generating Feedback for: %s" % student_file_name)
