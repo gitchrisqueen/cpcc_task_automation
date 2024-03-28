@@ -24,7 +24,7 @@ required_vars = [openai_api_key, instructor_user_id, instructor_password, instru
 # If the 'Save' button is clicked
 if st.button("Save"):
     if any(not var.strip() for var in required_vars):
-        st.error("Please provide the missing API keys.")
+        st.error("Please provide the missing required settings.")
     else:
         st.session_state.openai_api_key = openai_api_key
         st.session_state.instructor_user_id = instructor_user_id
