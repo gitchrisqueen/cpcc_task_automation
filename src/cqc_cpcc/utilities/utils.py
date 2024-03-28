@@ -1,4 +1,5 @@
 import os.path
+import tempfile
 from enum import Enum, StrEnum
 from typing import Optional, Annotated, List, Union
 
@@ -287,11 +288,11 @@ def convert_tables_to_json_in_tmp__file(doc: Document) -> str:
         # Clear the table reference
         t._t = t._element = None
 
-    # Save to tmp file
-    tmp_file = "./tmp/tmp.docx"
-    doc.save(tmp_file)
+    # Save to temp file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='docx')
+    doc.save(temp_file.name)
 
-    return tmp_file
+    return temp_file.name
 
 
 def read_file(file_path: str) -> str:
