@@ -13,35 +13,14 @@ st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO:
 
 st.markdown("""Here we will give feedback to student project submissions""")
 
-
-def upload_instructions():
-    uploaded_file = st.file_uploader("Upload Assignment Instructions", type=["txt", "docx", "pdf"])
+def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], success_message: bool = True):
+    uploaded_file = st.file_uploader(uploader_text, type=accepted_file_types)
+    file_extension = os.path.splitext(uploaded_file.name)[1]
     if uploaded_file is not None:
-        st.success("File uploaded successfully.")
+        if success_message:
+            st.success("File uploaded successfully.")
         # Create a temporary file to store the uploaded instructions
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        temp_file.write(uploaded_file.getvalue())
-        #temp_file.close()
-        return temp_file.name
-
-
-def upload_solution():
-    uploaded_file = st.file_uploader("Upload Assignment Solution", type=["txt", "docx", "pdf", "java", "zip"])
-    if uploaded_file is not None:
-        st.success("File uploaded successfully.")
-        # Create a temporary file to store the uploaded solution
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        temp_file.write(uploaded_file.getvalue())
-        #temp_file.close()
-        return temp_file.name
-
-
-def upload_student_submission():
-    uploaded_file = st.file_uploader("Upload Student Submission", type=["txt", "docx", "pdf", "java", "zip"])
-    if uploaded_file is not None:
-        st.success("File uploaded successfully.")
-        # Create a temporary file to store the uploaded solution
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
         temp_file.write(uploaded_file.getvalue())
         #temp_file.close()
         return temp_file.name
@@ -83,10 +62,10 @@ def define_feedback_types():
 course_name = st.text_input("Enter Course Name")
 
 st.header("Instructions File")
-instructions_file_path = upload_instructions()
+instructions_file_path = add_upload_file_element("Upload Assignment Instructions", ["txt", "docx", "pdf"])
 
 st.header("Solution File")
-solution_file_path = upload_solution()
+solution_file_path = add_upload_file_element("Upload Assignment Solution", ["txt", "docx", "pdf", "java", "zip"])
 
 st.header("Feedback Types")
 feedback_types = define_feedback_types()
@@ -115,7 +94,7 @@ temperature = st.slider("Chat GPT Temperature", min_value=0.2, max_value=0.8, st
 
 
 st.header("Student Submission File(s)")
-student_submission_file_path = upload_student_submission()
+student_submission_file_path = add_upload_file_element("Upload Student Submission", ["txt", "docx", "pdf", "java", "zip"])
 # Checkbox for enabling Markdown wrapping
 wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
 
