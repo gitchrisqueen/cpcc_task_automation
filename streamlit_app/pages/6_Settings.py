@@ -1,4 +1,5 @@
 #  Copyright (c) 2024. Christopher Queen Consulting LLC (http://www.ChristopherQueenConsulting.com/)
+import os
 
 import streamlit as st
 
@@ -25,7 +26,8 @@ if st.button("Save"):
     if any(not var.strip() for var in required_vars):
         st.error("Please provide the missing required settings.")
     else:
-        st.session_state.openai_api_key = openai_api_key
-        st.session_state.instructor_user_id = instructor_user_id
-        st.session_state.instructor_password = instructor_password
-        st.session_state.instructor_signature = instructor_signature
+        # Set both the st session state and the environment variable
+        st.session_state.openai_api_key = os.environ["OPENAI_API_KEY"] = openai_api_key
+        st.session_state.instructor_user_id = os.environ["INSTRUCTOR_USERID"] = instructor_user_id
+        st.session_state.instructor_password = os.environ["INSTRUCTOR_PASS"] = instructor_password
+        st.session_state.instructor_signature = os.environ["FEEDBACK_SIGNATURE"] = instructor_signature
