@@ -50,8 +50,6 @@ def define_feedback_types():
     ]
     feedback_types_df = pd.DataFrame(default_data)
 
-    df.style.format({"stars": human_format}),  # Preformat
-
     # Allow users to edit the table
     edited_df = st.data_editor(feedback_types_df, key='feedback_types', hide_index=True,
                                num_rows="dynamic",
