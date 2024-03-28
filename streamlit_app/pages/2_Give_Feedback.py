@@ -41,6 +41,9 @@ instructions_file_path = upload_instructions()
 st.header("Upload Solution")
 solution_file_path = upload_solution()
 
+st.header("Feedback Types")
+define_feedback_types()
+
 if instructions_file_path and solution_file_path:
     st.write("Both instructions file and solution file have been uploaded successfully.")
     # Perform other operations with the uploaded files
