@@ -47,14 +47,16 @@ def define_feedback_types():
     feedback_types_df = pd.DataFrame(default_data)
 
     # Allow users to edit the table
-    feedback_types_df = st.dataframe(feedback_types_df)
+    st.dataframe(feedback_types_df, hide_index=True)
 
     # Add a new row button
     if st.button("Add Feedback Type"):
         feedback_types_df = feedback_types_df.append({"Name": "", "Description": ""}, ignore_index=True)
 
     # Allow users to delete rows
-    rows_to_delete = st.multiselect("Select Rows to Delete", feedback_types_df.index.tolist())
+    #rows_to_delete = st.multiselect("Select Rows to Delete", feedback_types_df.multiselect)
+    rows_to_delete = feedback_types_df['Name'].unique().tolist()
+
     if len(rows_to_delete) > 0:
         feedback_types_df = feedback_types_df.drop(index=rows_to_delete)
 
