@@ -35,7 +35,7 @@ COMMENTS_MISSING_STRING = "The code does not include sufficient commenting throu
 class FeedbackType(ExtendedEnum):
     pass
 
-class DefaultFeedbackType(ExtendedEnum):
+class DefaultFeedbackType(FeedbackType):
     """Enum representing various feedback types."""
 
     #### ------- Below is for JAVA expected submissions ------- #####

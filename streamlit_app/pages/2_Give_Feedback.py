@@ -81,6 +81,7 @@ def main():
 
     st.header("Feedback Types")
     feedback_types = define_feedback_types()
+    feedback_types_dict = {}
     feedback_types_list = []
     # Show success message if feedback types are defined
     if not feedback_types.empty:
@@ -89,7 +90,10 @@ def main():
         for _, row in feedback_types.iterrows():
             name = row["Name"]
             description = row["Description"]
-            feedback_types_list.append(FeedbackType(name, description))
+            feedback_types_dict[name] = description
+            #feedback_types_list.append(FeedbackType(name, description))
+        MyFeedbackType = FeedbackType('FeedbackType', feedback_types_dict)
+        feedback_types_list = list(MyFeedbackType)
 
     if st.button('Display Feedback Types List'):
         st.write("Feedback Types:", feedback_types_list)
