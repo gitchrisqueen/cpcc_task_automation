@@ -153,9 +153,8 @@ def main():
         else:
             pre_feedback = "Good job submitting your assignment. "
             # Loop through each feedback type and reply some giberrish
-            feedback = ""
-            for ft in feedback_types_list:
-                feedback += "Details: "+str(ft.value)
+            feedback = "I'd give you feedback if I was ChatGPT but i'm not."
+            st.help(feedback_types_list)
             post_feedback = "\n\n - " + st.session_state.instructor_signature
 
         # Display text output TODO: Look into other format options. Markdown is allowed
