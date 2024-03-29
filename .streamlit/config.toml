@@ -1,8 +1,12 @@
 [theme]
 base = "light"
-#primaryColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
-primaryColor = "#636466"  # CENTRAL PIEDMONT GOLD
-secondaryBackgroundColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
+primaryColor = "#007396"
+secondaryBackgroundColor = "#636466"
 backgroundColor = "#ffffff"  # White background
-textColor = "#007396"  # PANTONE 633 C - Blue
+textColor = "#B6A269"
 font="Franklin Gothic"
+
+
+# "#B6A269"  # CENTRAL PIEDMONT GRAY
+# "#636466"  # CENTRAL PIEDMONT GOLD
+# "#007396"  # CENTRAL PIEDMONT Blue
