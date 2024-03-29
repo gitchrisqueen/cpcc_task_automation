@@ -1,9 +1,9 @@
 [theme]
 base = "light"
 primaryColor = "#007396"
-secondaryBackgroundColor = "#636466"
+secondaryBackgroundColor = "#B6A269"
 backgroundColor = "#ffffff"  # White background
-textColor = "#B6A269"
+#textColor = "#B6A269"
 font="Franklin Gothic"
 
 
