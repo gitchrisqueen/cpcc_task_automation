@@ -155,7 +155,7 @@ def main():
             # Loop through each feedback type and reply some giberrish
             feedback = ""
             for ft in feedback_types_list:
-                feedback += "Name: "+ft.name+ "Details: "+str(ft.value)
+                feedback += "Details: "+str(ft.value)
             post_feedback = "\n\n - " + st.session_state.instructor_signature
 
         # Display text output TODO: Look into other format options. Markdown is allowed
