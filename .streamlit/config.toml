@@ -1,6 +1,6 @@
 [theme]
 base = "light"
-primaryColor = "#636466"  # CENTRAL PIEDMONT GOLD #primaryColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
+#primaryColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
 primaryColor = "#636466"  # CENTRAL PIEDMONT GOLD
 secondaryBackgroundColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
 backgroundColor = "#ffffff"  # White background
