@@ -4,4 +4,5 @@ base = "light"
 primaryColor = "#636466"  # CENTRAL PIEDMONT GOLD
 secondaryBackgroundColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
 backgroundColor = "#ffffff"  # White background
-textColor = "#007396"  # PANTONE 633 C - Blud
+textColor = "#007396"  # PANTONE 633 C - Blue
+font="Franklin Gothic"
