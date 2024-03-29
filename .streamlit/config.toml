@@ -4,26 +4,4 @@ base = "light"
 primaryColor = "#636466"  # CENTRAL PIEDMONT GOLD
 secondaryBackgroundColor = "#B6A269"  # CENTRAL PIEDMONT GRAY
 backgroundColor = "#ffffff"  # White background
-
-[theme.secondaryColor]
-textColor = "#007396"  # PANTONE 633 C
-background = "#ffffff"  # White background
-
-[theme.error]
-background = "#862633"  # PANTONE 202 C - BLUE
-textColor = "#ffffff"  # White text
-
-[theme.warning]
-background = "#F1C400"  # PANTONE 7406 C
-textColor = "#000000"  # Black text
-
-[theme.info]
-background = "#642667"  # PANTONE 260 C
-textColor = "#ffffff"  # White text
-
-[theme.success]
-background = "#84BD00"  # PANTONE 376 C
-textColor = "#000000"  # Black text
-
-[server]
-headless = true
+textColor = "#007396"  # PANTONE 633 C - Blud
