@@ -60,10 +60,45 @@ def get_custom_llm(temperature: float, model: str) -> ChatOpenAI:
     """
     return ChatOpenAI(temperature=temperature, model=model)
 
+def add_CPCC_theming():
+    # Embed custom fonts using HTML and CSS
+    st.markdown(
+        """
+        <style>
+            @font-face {
+                font-family: 'Franklin Gothic';
+                src: url('path/to/franklin_gothic.ttf');
+            }
+
+            @font-face {
+                font-family: 'ITC New Baskerville';
+                src: url('path/to/itc_new_baskerville.ttf');
+            }
+
+            body {
+                font-family: 'Franklin Gothic', sans-serif;
+            }
+
+            h1, h2, h3, h4, h5, h6 {
+                font-family: 'Franklin Gothic', sans-serif;
+                font-weight: normal;
+            }
+
+            p {
+                font-family: 'ITC New Baskerville', serif;
+                font-weight: normal;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 def main():
 
     st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO: Change the page icon
+
+    add_CPCC_theming()
 
     st.markdown("""Here we will give feedback to student project submissions""")
 
