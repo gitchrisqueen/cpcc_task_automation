@@ -16,7 +16,8 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.markdown("""Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
+    st.markdown(
+        """Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
 
 
 if __name__ == '__main__':
