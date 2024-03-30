@@ -4,7 +4,7 @@ primaryColor = "#007396" # Blue
 secondaryBackgroundColor = "#B6A269" # Gold
 backgroundColor = "#ffffff"  # White background
 #textColor = "#B6A269"
-font="Franklin Gothic"
+font="sans serif"
 
 
 # "#B6A269"  # CENTRAL PIEDMONT Gold
