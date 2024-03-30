@@ -35,8 +35,9 @@ def main():
     st.header("Welcome to CPCC Task Automation! 👋")
 
     # Get the ReadMe Markdown and display it
-    parent_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    readme_markdown = read_file(parent_directory + "/README.md")
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    #parent_directory = os.path.dirname(current_directory)
+    readme_markdown = read_file(current_directory + "/README.md")
 
     st.markdown(readme_markdown)
 

@@ -3,7 +3,7 @@
 import streamlit as st
 
 
-@st.cache
+@st.cache_data
 def get_cpcc_css():
     # Embed custom fonts using HTML and CSS
     css = """

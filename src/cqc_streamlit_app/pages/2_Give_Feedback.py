@@ -65,9 +65,6 @@ def get_custom_llm(temperature: float, model: str) -> ChatOpenAI:
     return ChatOpenAI(temperature=temperature, model=model)
 
 
-
-
-
 def give_feedback_on_assignments(course_name: str, assignment_name: str, assignment_instructions_file: str,
                                  assignment_solution_file: Union[str, List[str]],
                                  downloaded_exams_directory: str, wrap_code_in_markdown=True):
@@ -140,7 +137,8 @@ def on_download_click():
     mime_type = file_mime_types.get(feedback_file_extension, "application/octet-stream")
 
     # Trigger the download of the file
-    st.download_button(label="Download Feedback File", data=st.session_state.feedback_download_file_path, file_name=os.path.basename(feedback_file_name), mime=mime_type)
+    st.download_button(label="Download Feedback File", data=st.session_state.feedback_download_file_path,
+                       file_name=os.path.basename(feedback_file_name), mime=mime_type)
 
 
 def main():
@@ -221,7 +219,7 @@ def main():
         st.button("Click to download", on_click=on_download_click)
 
         # Display text output TODO: Look into other format options. Markdown is allowed
-        #st.text(pre_feedback + feedback + post_feedback)
+        # st.text(pre_feedback + feedback + post_feedback)
         # TODO: Make this copy/paste-able or write to a file they can download/open to use
 
 
