@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from streamlit_app.Home import add_cpcc_theming
+from streamlit_app.Home import get_cpcc_css
 
 
 def main():
@@ -10,7 +10,11 @@ def main():
 
     st.set_page_config(page_title="CPCC Take Attendance", page_icon="🦜️🔗")  # TODO: Change the page icon
 
-    add_cpcc_theming()
+    css = get_cpcc_css()
+    st.markdown(
+        css,
+        unsafe_allow_html=True
+    )
 
     st.markdown("""Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
 

@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 
 from cqc_cpcc.project_feedback import FeedbackType, get_feedback_guide
 from cqc_cpcc.utilities.utils import read_file, read_files
-from streamlit_app.Home import add_cpcc_theming
+from streamlit_app.Home import get_cpcc_css
 
 
 def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], success_message: bool = True):
@@ -146,7 +146,11 @@ def on_download_click():
 def main():
     st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO: Change the page icon
 
-    add_cpcc_theming()
+    css = get_cpcc_css()
+    st.markdown(
+        css,
+        unsafe_allow_html=True
+    )
 
     st.markdown("""Here we will give feedback to student project submissions""")
 

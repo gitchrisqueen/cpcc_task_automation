@@ -20,10 +20,9 @@ if 'instructor_signature' not in st.session_state:
 
 
 @st.cache
-def add_cpcc_theming():
+def get_cpcc_css():
     # Embed custom fonts using HTML and CSS
-    st.markdown(
-        """
+    css = """
         <style>
             @font-face {
                 font-family: "Franklin Gothic";
@@ -33,7 +32,7 @@ def add_cpcc_theming():
                 url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.woff")format("woff"),
                 url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.ttf")format("truetype"),
                 url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.svg#Franklin Gothic")format("svg");
-}
+            }
 
             @font-face {
                 font-family: 'ITC New Baskerville';
@@ -59,9 +58,11 @@ def add_cpcc_theming():
                 font-weight: normal;
             }
         </style>
-        """,
-        unsafe_allow_html=True
-    )
+        """
+    return css
+
+
+
 
 
 def main():
@@ -70,7 +71,11 @@ def main():
 
     st.set_page_config(page_title="CPCC Task Automation", page_icon="🦜️🔗")  # TODO: Change the page icon
 
-    add_cpcc_theming()
+    css = get_cpcc_css()
+    st.markdown(
+        css,
+        unsafe_allow_html=True
+    )
 
     st.header("Welcome to CPCC Task Automation! 👋")
 

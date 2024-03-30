@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from streamlit_app.Home import add_cpcc_theming
+from streamlit_app.Home import get_cpcc_css
 
 
 def main():
@@ -10,7 +10,11 @@ def main():
 
     st.set_page_config(page_title="CPCC Grade Exams", page_icon="🦜️🔗")  # TODO: Change the page icon
 
-    add_cpcc_theming()
+    css = get_cpcc_css()
+    st.markdown(
+        css,
+        unsafe_allow_html=True
+    )
 
     st.markdown(
         """Here we will grade exams""")

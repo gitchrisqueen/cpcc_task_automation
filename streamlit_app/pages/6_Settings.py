@@ -3,12 +3,15 @@ import os
 
 import streamlit as st
 
-from streamlit_app.Home import add_cpcc_theming
+from streamlit_app.Home import get_cpcc_css
 
 
 def main():
-
-    add_cpcc_theming()
+    css = get_cpcc_css()
+    st.markdown(
+        css,
+        unsafe_allow_html=True
+    )
 
     # Streamlit app
     st.subheader('Settings')
