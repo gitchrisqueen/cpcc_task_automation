@@ -1,11 +1,13 @@
 from pprint import pprint
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Tuple
 
 from langchain.output_parsers import PydanticOutputParser, RetryWithErrorOutputParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import BaseOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableSerializable
 from langchain_core.runnables.utils import Output
 from langchain_openai import ChatOpenAI
 from pydantic.v1 import BaseModel
@@ -94,6 +96,70 @@ def generate_error_definitions(llm: BaseChatModel, pydantic_object: Type[T], maj
     return final_output
 
 
+def get_feedback_completion_chain(llm: BaseChatModel, parser: BaseOutputParser, feedback_type_list: list,
+                                  assignment: str,
+                                  solution: str, student_submission: str, course_name: str,
+                                  wrap_code_in_markdown=True) -> Tuple[
+    RunnableSerializable[dict, BaseMessage], PromptTemplate]:
+    """Return the completion chain that can be used to get feedback on student submissions"""
+    format_instructions = parser.get_format_instructions()
+
+    if wrap_code_in_markdown:
+        solution = wrap_code_in_markdown_backticks(solution)
+
+    prompt = PromptTemplate(
+        # template_format="jinja2",
+        input_variables=["assignment", "solution", "submission", "course_name"],
+        partial_variables={
+            "format_instructions": format_instructions,
+            "feedback_types": "\n\t".join(feedback_type_list),
+            "assignment": assignment,
+            "solution": solution,
+            "course_name": course_name,
+
+        },
+        template=(
+            # ASSIGNMENT_FEEDBACK_PROMPT_BASE
+            CODE_ASSIGNMENT_FEEDBACK_PROMPT_BASE
+        ).strip(),
+    )
+
+    # prompt_value = prompt.format_prompt(exam_instructions=EXAM_INSTRUCTIONS, submission=STUDENT_SUBMISSION)
+    # pprint(prompt_value)
+
+    llm.bind(
+        response_format={"type": "json_object"}
+    )
+
+    completion_chain = prompt | llm
+
+    return completion_chain, prompt
+
+
+def get_feedback_output_from_completion_chain(completion_chain: RunnableSerializable[dict, BaseMessage],
+                                              parser: BaseOutputParser, prompt: PromptTemplate, solution: str,
+                                              wrap_code_in_markdown=True):
+    if wrap_code_in_markdown:
+        solution = wrap_code_in_markdown_backticks(solution)
+
+    output = completion_chain.invoke({
+        "solution": solution,
+        "response_format": {"type": "json_object"}
+    })
+
+    # print("\n\nOutput:")
+    # pprint(output)
+
+    try:
+        final_output = parser.parse(output.content)
+    except Exception as e:
+        print(e)
+        final_output = retry_output(output, parser, prompt, solution=solution)
+
+    #print("\n\nFinal Output:")
+    #pprint(output)
+
+    return final_output
 
 
 def generate_feedback(llm: BaseChatModel, pydantic_object: Type[T], feedback_type_list: list, assignment: str,
@@ -113,7 +179,7 @@ def generate_feedback(llm: BaseChatModel, pydantic_object: Type[T], feedback_typ
 
         },
         template=(
-            #ASSIGNMENT_FEEDBACK_PROMPT_BASE
+            # ASSIGNMENT_FEEDBACK_PROMPT_BASE
             CODE_ASSIGNMENT_FEEDBACK_PROMPT_BASE
         ).strip(),
     )

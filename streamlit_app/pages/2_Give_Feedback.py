@@ -1,13 +1,17 @@
 #  Copyright (c) 2024. Christopher Queen Consulting LLC (http://www.ChristopherQueenConsulting.com/)
 import os
 import tempfile
+from datetime import datetime
+from typing import Union, List
 
 import pandas as pd
 import streamlit as st
 from langchain_openai import ChatOpenAI
 
 from cqc_cpcc.project_feedback import FeedbackType, get_feedback_guide
-from cqc_cpcc.utilities.utils import read_file
+from cqc_cpcc.utilities.utils import read_file, read_files
+from streamlit_app.Home import add_cpcc_theming
+
 
 def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], success_message: bool = True):
     uploaded_file = st.file_uploader(uploader_text, type=accepted_file_types)
@@ -18,7 +22,7 @@ def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], 
         # Create a temporary file to store the uploaded instructions
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
         temp_file.write(uploaded_file.getvalue())
-        #temp_file.close()
+        # temp_file.close()
         return temp_file.name
 
 
@@ -60,62 +64,95 @@ def get_custom_llm(temperature: float, model: str) -> ChatOpenAI:
     """
     return ChatOpenAI(temperature=temperature, model=model)
 
-def add_CPCC_theming():
-    # Embed custom fonts using HTML and CSS
-    st.markdown(
-        """
-        <style>
-            @font-face {
-                font-family: "Franklin Gothic";
-                src: url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.eot");
-                src: url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.eot?#iefix")format("embedded-opentype"),
-                url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.woff2")format("woff2"),
-                url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.woff")format("woff"),
-                url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.ttf")format("truetype"),
-                url("https://db.onlinewebfonts.com/t/9c9dbb999dd7068f51335d93cc7328bd.svg#Franklin Gothic")format("svg");
-}
 
-            @font-face {
-                font-family: 'ITC New Baskerville';
-                src: url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.eot");
-                src: url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.eot?#iefix")format("embedded-opentype"),
-                url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.woff2")format("woff2"),
-                url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.woff")format("woff"),
-                url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.ttf")format("truetype"),
-                url("https://db.onlinewebfonts.com/t/501ade6e29baa5c62c15ec28f3ed2c62.svg#ITC New Baskerville")format("svg");
-            }
 
-            body {
-                font-family: 'Franklin Gothic', sans-serif;
-            }
 
-            h1, h2, h3, h4, h5, h6 {
-                font-family: 'Franklin Gothic', sans-serif;
-                font-weight: normal;
-            }
 
-            p {
-                font-family: 'ITC New Baskerville', sans-serif;
-                font-weight: normal;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+def give_feedback_on_assignments(course_name: str, assignment_name: str, assignment_instructions_file: str,
+                                 assignment_solution_file: Union[str, List[str]],
+                                 downloaded_exams_directory: str, wrap_code_in_markdown=True):
+    # Get the assignment instructions
+    assignment_instructions = read_file(assignment_instructions_file)
+
+    # print("Assignment Instructions:\n%s" % assignment_instructions)
+
+    # Get the assignment  solution
+    assignment_solution = read_files(assignment_solution_file)
+
+    # print("Assignment Solutions:\n%s" % assignment_solution)
+
+    allowed_file_extensions = (".java"
+                               , ".docx"
+                               )
+
+    # TODO: Determine if it is either one file, a directory or a zip file with folders and files
+
+    # Get all the files in the current working directory
+    files = [file for file in os.listdir(downloaded_exams_directory) if file.endswith(allowed_file_extensions)]
+
+    time_stamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+    # Loop through every file in directory and grade the assignment saved to a file
+    for file in files:
+        student_file_name, student_file_extension = os.path.splitext(file)
+        student_file_path = downloaded_exams_directory + "/" + file
+        student_submission = read_file(student_file_path)
+
+        print("Generating Feedback for: %s" % student_file_name)
+        feedback_guide = get_feedback_guide(assignment=assignment_instructions,
+                                            solution=assignment_solution,
+                                            student_submission=student_submission,
+                                            course_name=course_name,
+                                            wrap_code_in_markdown=wrap_code_in_markdown)
+
+        feedback = "\n".join([str(x) for x in feedback_guide.all_feedback])
+
+        pre_feedback = "Good job submitting your assignment. "
+        if len(feedback) > 0:
+            pre_feedback = pre_feedback + "Here is my feedback:\n\n"
+        else:
+            pre_feedback = pre_feedback + "I find no issues with your submission. Keep up the good work!"
+        post_feedback = "\n\n - " + FEEDBACK_SIGNATURE
+        print("\n\n" + pre_feedback + feedback + post_feedback)
+
+        file_path = f"./logs/{assignment_name}_{student_file_name}-{model}_temp({str(temperature)})-{time_stamp}.txt".replace(
+            " ", "_")
+
+        feedback_guide.save_feedback_to_docx(file_path.replace(".txt", ".docx"), pre_feedback, post_feedback)
+
+        f = open(file_path, "w")
+        f.write(pre_feedback + feedback + post_feedback)
+        f.close()
+        print("Feedback saved to : %s" % file_path)
+
+    # TODO: If more than one file then zip and return path to zipped file for download
+
+
+def on_download_click():
+    file_mime_types = {
+        ".java": "text/x-java-source",
+        ".txt": "text/plain",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pdf": "application/pdf",
+        ".zip": "application/zip"
+    }
+    feedback_file_name, feedback_file_extension = os.path.splitext(st.session_state.feedback_download_file_path)
+    mime_type = file_mime_types.get(feedback_file_extension, "application/octet-stream")
+
+    # Trigger the download of the file
+    st.download_button(label="Download Feedback File", data=st.session_state.feedback_download_file_path, file_name=os.path.basename(feedback_file_name), mime=mime_type)
 
 
 def main():
-
     st.set_page_config(page_title="Give Feedback", page_icon="🦜️🔗")  # TODO: Change the page icon
 
-    add_CPCC_theming()
+    add_cpcc_theming()
 
     st.markdown("""Here we will give feedback to student project submissions""")
 
-
     # Add elements to page to work with
 
-     # Text input for entering a course name
+    # Text input for entering a course name
     course_name = st.text_input("Enter Course Name")
 
     st.header("Instructions File")
@@ -136,12 +173,9 @@ def main():
             name = row["Name"]
             description = row["Description"]
             feedback_types_dict[name] = description
-            #feedback_types_list.append(FeedbackType(name, description))
+            # feedback_types_list.append(FeedbackType(name, description))
         MyFeedbackType = FeedbackType('FeedbackType', feedback_types_dict)
         feedback_types_list = list(MyFeedbackType)
-
-    if st.button('Display Feedback Types List'):
-        st.write("Feedback Types:", feedback_types_list)
 
     # Dropdown for selecting ChatGPT models
     default_option = "gpt-3.5-turbo-16k-0613"
@@ -151,14 +185,13 @@ def main():
     # Slider for selecting a value (ranged from 0.2 to 0.8, with step size 0.01)
     default_value = 0.2
     temperature = st.slider("Chat GPT Temperature", min_value=0.2, max_value=0.8, step=0.1, value=default_value,
-                               format="%.2f")
-
+                            format="%.2f")
 
     st.header("Student Submission File(s)")
-    student_submission_file_path = add_upload_file_element("Upload Student Submission", ["txt", "docx", "pdf", "java", "zip"])
+    student_submission_file_path = add_upload_file_element("Upload Student Submission",
+                                                           ["txt", "docx", "pdf", "java", "zip"])
     # Checkbox for enabling Markdown wrapping
     wrap_code_in_markdown = st.checkbox("Student Submission Is Code", True)
-
 
     if instructions_file_path and solution_file_path and student_submission_file_path:
         st.write("All required file have been uploaded successfully.")
@@ -168,46 +201,24 @@ def main():
         student_file_name, student_file_extension = os.path.splitext(student_submission_file_path)
         base_student_filename = os.path.basename(student_submission_file_path)
 
-        # TODO: Create the feedback item - Make this chattable so that the instructor can make changes
+        # TODO: Create the feedback item - Make this chat-able so that the instructor can make changes
 
         print("Generating Feedback for: %s" % base_student_filename)
 
-        if False: # TODO: Enable once you have proper API access to OpenAI
-            # Create the custom llm
-            custom_llm = get_custom_llm(temperature=temperature, model=selected_model)
+        custom_llm = get_custom_llm(temperature=temperature, model=selected_model)
+        # TODO: Get the completion chain with static variables passed
+        completion_chain = False
 
-            #st.write("Instruction File Path: %s" % instructions_file_path)
-            assignment_instructions = read_file(instructions_file_path)
-            assignment_solution = read_file(solution_file_path)
-            student_submission = read_file(student_submission_file_path)
+        # TODO: Call the completion chain with the student submission or teacher text for response
 
-            feedback_guide = get_feedback_guide(assignment=assignment_instructions,
-                                                solution=assignment_solution,
-                                                student_submission=student_submission,
-                                                course_name=course_name,
-                                                wrap_code_in_markdown=wrap_code_in_markdown,
-                                                custom_llm=custom_llm
-                                                )
+        st.session_state.feedback_download_file_path = give_feedback_on_assignments()
 
-            # Output feedback to log and streamlit
-            feedback = "\n".join([str(x) for x in feedback_guide.all_feedback])
-
-            pre_feedback = "Good job submitting your assignment. "
-            if len(feedback) > 0:
-                pre_feedback = pre_feedback + "Here is my feedback:\n\n"
-            else:
-                pre_feedback = pre_feedback + "I find no issues with your submission. Keep up the good work!"
-            post_feedback = "\n\n - " + st.session_state.instructor_signature
-            print("\n\n" + pre_feedback + feedback + post_feedback)
-        else:
-            pre_feedback = "Good job submitting your assignment. "
-            # Loop through each feedback type and reply some giberrish
-            feedback = "I'd give you feedback if I was ChatGPT but i'm not."
-            st.help(feedback_types_list)
-            post_feedback = "\n\n - " + st.session_state.instructor_signature
+        # Display the button
+        st.button("Click to download", on_click=on_download_click)
 
         # Display text output TODO: Look into other format options. Markdown is allowed
-        st.text(pre_feedback + feedback + post_feedback)
+        #st.text(pre_feedback + feedback + post_feedback)
+        # TODO: Make this copy/paste-able or write to a file they can download/open to use
 
 
 if __name__ == '__main__':

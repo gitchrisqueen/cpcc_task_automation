@@ -2,6 +2,18 @@
 
 import streamlit as st
 
-st.set_page_config(page_title="Take Attendance", page_icon="🦜️🔗") # TODO: Change the page icon
+from streamlit_app.Home import add_cpcc_theming
 
-st.markdown("""Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
+
+def main():
+    # TODO: Initialize other session state variables - the ones you need in .env
+
+    st.set_page_config(page_title="CPCC Take Attendance", page_icon="🦜️🔗")  # TODO: Change the page icon
+
+    add_cpcc_theming()
+
+    st.markdown("""Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
+
+
+if __name__ == '__main__':
+    main()

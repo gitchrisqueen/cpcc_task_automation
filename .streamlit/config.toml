@@ -1,12 +1,12 @@
 [theme]
 base = "light"
-primaryColor = "#007396"
-secondaryBackgroundColor = "#B6A269"
+primaryColor = "#007396" # Blue
+secondaryBackgroundColor = "#B6A269" # Gold
 backgroundColor = "#ffffff"  # White background
 #textColor = "#B6A269"
 font="Franklin Gothic"
 
 
-# "#B6A269"  # CENTRAL PIEDMONT GRAY
-# "#636466"  # CENTRAL PIEDMONT GOLD
+# "#B6A269"  # CENTRAL PIEDMONT Gold
+# "#636466"  # CENTRAL PIEDMONT Gray
 # "#007396"  # CENTRAL PIEDMONT Blue
