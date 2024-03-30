@@ -4,7 +4,7 @@ import os
 import streamlit as st
 
 from cqc_cpcc.utilities.utils import read_file
-from streamlit_app.utils import get_cpcc_css
+from cqc_streamlit_app.utils import get_cpcc_css
 
 # Initialize session state variables
 if 'openai_api_key' not in st.session_state:

@@ -3,7 +3,7 @@ import os
 
 import streamlit as st
 
-from streamlit_app.utils import get_cpcc_css
+from cqc_streamlit_app.utils import get_cpcc_css
 
 
 def main():

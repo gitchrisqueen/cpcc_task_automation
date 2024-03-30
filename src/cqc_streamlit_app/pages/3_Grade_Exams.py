@@ -2,13 +2,13 @@
 
 import streamlit as st
 
-from streamlit_app.utils import get_cpcc_css
+from cqc_streamlit_app.utils import get_cpcc_css
 
 
 def main():
     # TODO: Initialize other session state variables - the ones you need in .env
 
-    st.set_page_config(page_title="CPCC Take Attendance", page_icon="🦜️🔗")  # TODO: Change the page icon
+    st.set_page_config(page_title="CPCC Grade Exams", page_icon="🦜️🔗")  # TODO: Change the page icon
 
     css = get_cpcc_css()
     st.markdown(
@@ -17,7 +17,7 @@ def main():
     )
 
     st.markdown(
-        """Here we will take attandance for you and provide log of what we have for each of our courses for each date""")
+        """Here we will grade exams""")
 
 
 if __name__ == '__main__':
