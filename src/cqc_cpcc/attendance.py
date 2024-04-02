@@ -38,14 +38,15 @@ class BrightSpace_Course:
         self.date_range_end = DT.date.today() - DT.timedelta(days=2)  # TODO: This should be 2
         self.date_range_start = self.date_range_end - DT.timedelta(days=7)  # TODO: This should be 7
         self.attendance_records = {}
-        self.open_course_tab()
-        self.get_attendance_from_assignments()
-        self.get_attendance_from_quizzes()
-        self.get_attendance_from_discussions()
-        self.close_course_tab()
-
-        self.normalize_attendance_records()
-        logger.info("Attendance Records (ALL):\n%s" % self.attendance_records)
+        if self.open_course_tab():
+            self.get_attendance_from_assignments()
+            self.get_attendance_from_quizzes()
+            self.get_attendance_from_discussions()
+            self.close_course_tab()
+            self.normalize_attendance_records()
+            logger.info("Attendance Records (ALL):\n%s" % self.attendance_records)
+        else:
+            logger.warn("No Attendance Records - Cant find Course")
 
     def normalize_attendance_records(self):
         # Sort the records first
@@ -60,7 +61,7 @@ class BrightSpace_Course:
         # Close tab when done
         close_tab(self.driver)
 
-    def open_course_tab(self):
+    def open_course_tab(self) -> bool:
         handles = self.driver.window_handles
 
         self.driver.switch_to.new_window('tab')
@@ -104,17 +105,26 @@ class BrightSpace_Course:
         click_element_wait_retry(self.driver, self.wait, "d2l-navigation-s-course-menu", "Waiting for Course Menu",
                                  By.CLASS_NAME)
 
+        course_in_brightspace = False
         # Get the course url
-        course_link = self.wait.until(
-            lambda d: d.find_element(By.XPATH, xpath_expression),
-            "Waiting for Course Links")
-        self.url = course_link.get_attribute("href")
-        # course_url = brightspace_url + href_value
-        logger.info("Course Name: %s" % self.name)
-        logger.info("Course URL: %s" % self.url)
+        try:
+            logger.info("Searching for Url | Course Name: %s" % self.name)
+            course_link = self.wait.until(
+                lambda d: d.find_element(By.XPATH, xpath_expression),
+                "Waiting for Course Links")
+            self.url = course_link.get_attribute("href")
+            # course_url = brightspace_url + href_value
 
-        # Navigate to course url
-        self.driver.get(self.url)
+            logger.info("Course URL: %s" % self.url)
+
+            # Navigate to course url
+            self.driver.get(self.url)
+
+            course_in_brightspace = True
+        except TimeoutException:
+            logger.warn("Course Name: %s| Not Found In BrightSpace" % self.name)
+
+        return course_in_brightspace
 
     def click_course_tools_link(self):
         """Click the Course Tools link"""
