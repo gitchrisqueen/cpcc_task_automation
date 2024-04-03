@@ -2,8 +2,11 @@
 
 import streamlit as st
 
+from cqc_streamlit_app.initi_pages import init_session_state
 from cqc_streamlit_app.utils import get_cpcc_css
 
+# Initialize session state variables
+init_session_state()
 
 def main():
     # TODO: Initialize other session state variables - the ones you need in .env

@@ -10,8 +10,12 @@ from langchain_openai import ChatOpenAI
 
 from cqc_cpcc.project_feedback import FeedbackType, get_feedback_guide
 from cqc_cpcc.utilities.utils import read_file, read_files
+from cqc_streamlit_app.initi_pages import init_session_state
 from cqc_streamlit_app.utils import get_cpcc_css
 
+
+# Initialize session state variables
+init_session_state()
 
 def add_upload_file_element(uploader_text: str, accepted_file_types: list[str], success_message: bool = True):
     uploaded_file = st.file_uploader(uploader_text, type=accepted_file_types)

@@ -4,20 +4,11 @@ import os
 import streamlit as st
 
 from cqc_cpcc.utilities.utils import read_file
+from cqc_streamlit_app.initi_pages import init_session_state
 from cqc_streamlit_app.utils import get_cpcc_css
 
 # Initialize session state variables
-if 'openai_api_key' not in st.session_state:
-    st.session_state.openai_api_key = ""
-
-if 'instructor_user_id' not in st.session_state:
-    st.session_state.instructor_user_id = ""
-
-if 'instructor_password' not in st.session_state:
-    st.session_state.instructor_password = ""
-
-if 'instructor_signature' not in st.session_state:
-    st.session_state.instructor_signature = "Your Instructor"
+init_session_state()
 
 
 def main():
