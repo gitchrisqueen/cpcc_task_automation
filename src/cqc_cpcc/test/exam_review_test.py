@@ -16,198 +16,35 @@ from cqc_cpcc.exam_review import *
 from cqc_cpcc.utilities.utils import read_file
 
 EXAM_INSTRUCTIONS = """Program Description
-   An acting coach charges new clients for acting instruction services based on duration of sessions in hours. The coach charges an hourly rate of $55.25 per hour for Child Acting Sessions and $88.35 per hour for Adult Acting Sessions. Write a program that determines a bill for booking an acting coach session. The program must:
-   \t1.	Ask the user to enter the type of session (child or adult) service to determine the hourly rate of the session.
-   \t\t* If an invalid session type is entered, the rate for an adult acting session will be applied. 
-   \t2.	Ask the user to enter the number of minutes of the duration of the session. This acting coach requires users to book a minimum of 50 minutes for a session. The maximum time that can be booked for a session is 180 minutes.
-   \t\t* If an invalid number of minutes is entered, a standard session length of 55 minutes will be booked automatically.
-   \t3.	The program must calculate the duration of the session in hours. This acting coach charges 1 hour for every 50 minutes of duration of a session.
-   \t4.	This acting coach is also offering a special 15% promotional discount when users enter the following discount code: ACT151TCA. Ask the user to enter the discount code.
-   \t\t* If an invalid discount code is entered, no discount will be applied.
-   \t5.	The program must calculate the charge for the acting coach session. The amount due is the product of the total hours of the session and the hourly rate for a session depending on the type of acting session. Apply the discount code as necessary to the charge.
-   \t6.	The program must display the type of session, the duration of the session in hours, the hourly rate for the session, the subtotal (session charge before discount), the discounted amount (if applicable), and the final amount due for the session.
+   Write a program that outputs 'Hello World!' to the screen
    """
 
 # NOTE: Make sure to use r""" to indicate raw string
 EXAM_SOLUTION = r"""import java.util.*;
 
-public class Exam1_SPR24B
+public class HelloWorld
 {
-   // main method - aka the 'brain' method
+   // main method 
    public static void main(String[] args)
    {
-       Scanner input = new Scanner(System.in);
-       double minutes, hours;
-       final double CHILDHOURLY = 55.25, ADULTHOURLY = 88.35;
-       double rate, serviceCharges, discount;
-       char serviceType;
-       String discountCode = "";
-
-       System.out.println("\nBook a session with an Acting Coach now!");
-
-       System.out.println("Choose from one of the following types of voice instruction services: ");
-       System.out.println("\t C - Child Acting Session");
-       System.out.println("\t A - Adult Acting Session");
-       System.out.print("Enter your choice (C or A): ");
-       serviceType = input.next().charAt(0);
-
-       // clear the buffer
-       input.nextLine();
-
-       // set the rate
-       if(serviceType == 'C')
-       {
-         System.out.printf("\nChild Acting Session rate: $%.2f per hour \n", CHILDHOURLY);
-         rate = CHILDHOURLY;
-       }
-       else if(serviceType == 'A')
-       {
-         System.out.printf("\nAdult Acting Session rate: $%.2f per hour \n", ADULTHOURLY);
-         rate = ADULTHOURLY;
-       }
-       else
-       {
-         System.out.println("\nInvalid choice. Adult Acting Session rate applied.");
-         System.out.printf("\nAdult Acting Session rate: $%.2f per hour \n", ADULTHOURLY);
-         rate = ADULTHOURLY;
-       }
-
-       System.out.print("\nEnter the total minutes of for the Acting Session (min: 50 - max: 180): ");
-       minutes = input.nextInt();
-
-       if(minutes < 50 || minutes > 180)
-       {
-         System.out.println("\nInvalid entry. 55 Minute Acting Session Booked.");
-         minutes = 55;
-       }
-
-       // calculate the hours
-       hours = minutes / 50.0;
-
-       // calculate the charges for the session
-       serviceCharges = hours * rate;
-
-       // clear the buffer
-       input.nextLine();
-
-       System.out.print("\nThere is a promotional discount available! Enter the discount code: ");
-       discountCode = input.nextLine();
-
-       if(discountCode.equals("ACT151TCA"))
-       {
-         System.out.println("\n15% Discount Applied!");
-         discount = serviceCharges * 0.15;
-       }
-       else
-       {
-         System.out.println("\nInvalid code. No discount applied!");
-         discount = 0.00;
-       }
-
-       System.out.println("\n-------------------------------------------------------------");
-       System.out.println("Acting Coach Session Info");
-       if(serviceType == 'C')
-         System.out.println("Session Type: \t\t\tChild Acting");
-       else
-         System.out.println("Session Type: \t\t\tAdult Acting");
-       System.out.printf("Session Duration: \t%.2f hours \n", hours);
-       System.out.printf("Session Rate: \t\t\t$%.2f per hour \n", rate);
-       System.out.printf("Session Charge: \t\t$%.2f \n", serviceCharges);
-       System.out.printf("Discount: \t\t\t\t$%.2f \n", discount);
-       System.out.printf("Amount Due: \t\t\t$%.2f \n", serviceCharges - discount);
-       System.out.println("-------------------------------------------------------------");
+       // Prints to the screen here
+       System.out.println("Hello World!");
    }   
 }
 """
 
 # NOTE: Make sure to use r""" to indicate raw string
-STUDENT_SUBMISSION = r"""import java.util.Scanner;
+STUDENT_SUBMISSION = r"""import java.util.*;
 
-public class Exam1Harris{
-
-   public static void main(String[] args){
-      
-   Scanner scanner = new Scanner(System.in);
-   
-   // Ask user to enter type of session. 
-   System.out.println("Hello!");
-   System.out.println("What type of service will you be using? \n1. Child \n2. Adult \nPlease enter either the corresponding number from the selection above.");
-   int userInputService = scanner.nextInt();
-   
-   // Convert user selection into hourly rate.
-   double hourlyRate = 0.0;
-   double minuteRate = 0.0;
-   String serviceType = ""; 
-   if (userInputService == 1){
-      serviceType = "Child";
-      hourlyRate = 55.25;
-      minuteRate = (hourlyRate / 50);
-   } else if (userInputService == 2){
-      serviceType = "Adult";
-      hourlyRate = 88.35;
-      minuteRate = (hourlyRate / 50);
-   } else {
-      serviceType = "Adult";
-      hourlyRate = 88.35;
-      minuteRate = (hourlyRate / 50);
-   }
-   
-   // Ask user to enter duration of session in minutes.
-   System.out.println("Sessions must be booked a minimum of 50 minutes. Sessions can be no longer than 180 minutes. \nPlease enter the duration (in minutes) of your session.: ");
-   int userInputMinutes = scanner.nextInt();
-   
-   // Calculate duration of session into hours. (1 hour = 50 minutes).
-   int sessionHours = 0;
-   int sessionMinutes = 0;
-   if (userInputMinutes >= 50 && userInputMinutes <= 180){
-      sessionHours = (userInputMinutes / 50);
-      sessionMinutes = (userInputMinutes % 50);
-   } else {
-      sessionHours = 1;
-      sessionMinutes = 5;
-   }
-   
-   // Calculate total charge for session.
-   double subtotal = ((sessionHours * hourlyRate) + (sessionMinutes * minuteRate));
-
-   
-   // Ask user to input promotional discount ACT151TCA.
-   scanner.nextLine();
-   final String discountCode = "ACT151TCA";
-   System.out.println("Please enter any promotional discount codes: ");
-   String userInputDiscount = scanner.nextLine();
-   
-   // Calculate discount.
-   double discountAmount = 0.0;
-   if (userInputDiscount.equals(discountCode)){
-      discountAmount = (subtotal * 0.15);
-   } else {
-      discountAmount = 0.0;
-   }
-         
-   // Amount due.
-   double totalDue = (subtotal - discountAmount);
-   
-   // Output receipt. Include type of session, duration of session in hours, hourly rate, subtotal, discounted amount, and amount due.
-   System.out.println("Please review your receipt.");
-   System.out.println("Type of service: " + serviceType + ".");
-   
-   if (sessionMinutes > 0){
-      System.out.println("Session duration: " + sessionHours + " hour(s) and " + sessionMinutes + " minute(s).");
-   } else if (sessionMinutes == 0){
-      System.out.println("Session duration: " + sessionHours + " hour(s).");
-   }
-   
-   System.out.println("Hourly rate of service: $" + hourlyRate + ".");
-   System.out.printf("Subtotal: $%.2f." , subtotal);
-   System.out.printf("\nDiscounted amount: $%.2f", discountAmount);
-   System.out.printf("\nAmount due: $%.2f" , totalDue);
-   System.out.println("\n \nThank you for using this program.");
-      
-   }
-
+public class StudentName_HelloWorld
+{
+   // main method 
+   public static void main(String[] args)
+   {
+       // Prints to the screen here
+       System.out.println("Hello World!");
+   }   
 }
-
 """
 
 
