@@ -69,7 +69,11 @@ from cqc_cpcc.utilities.logger import logger
 T = TypeVar("T", bound=BaseModel)
 
 # Default retry configuration
-DEFAULT_MAX_RETRIES = 3
+# IMPORTANT: Single-layer retry strategy
+# - Attempt 1: Normal request with strict schema
+# - Attempt 2 (if retryable): Smart retry with fallback strategy
+# - NO SDK-level retries (max_retries=0 in AsyncOpenAI client)
+DEFAULT_MAX_RETRIES = 1  # Total of 2 attempts (initial + 1 retry)
 DEFAULT_RETRY_DELAY = 1.0  # seconds
 DEFAULT_BACKOFF_MULTIPLIER = 2.0
 
@@ -214,11 +218,60 @@ def sanitize_openai_params(model: str, params: dict) -> dict:
     return sanitized
 
 
+def _build_fallback_prompt(original_prompt: str, schema_model: Type[BaseModel]) -> str:
+    """Build a fallback prompt for smart retry that requests plain JSON.
+    
+    When strict schema validation fails or returns empty, we retry with a simpler
+    request that asks for plain JSON without schema enforcement. This increases
+    the chance of getting a valid response.
+    
+    Args:
+        original_prompt: The original prompt text
+        schema_model: Pydantic model defining expected structure
+        
+    Returns:
+        Modified prompt that requests plain JSON with explicit schema
+    """
+    # Get schema info from Pydantic model
+    schema = schema_model.model_json_schema()
+    properties = schema.get("properties", {})
+    required = schema.get("required", [])
+    
+    # Build list of required fields with types
+    field_descriptions = []
+    for field_name, field_info in properties.items():
+        field_type = field_info.get("type", "string")
+        description = field_info.get("description", "")
+        required_marker = " (required)" if field_name in required else ""
+        field_descriptions.append(
+            f"  - {field_name}: {field_type}{required_marker} - {description}"
+        )
+    
+    fields_text = "\n".join(field_descriptions)
+    
+    fallback_prompt = f"""{original_prompt}
+
+IMPORTANT - Response Format:
+Return ONLY valid JSON with these exact fields (no markdown, no code blocks):
+{fields_text}
+
+Example format:
+{{
+  "field1": "value1",
+  "field2": 123
+}}
+"""
+    return fallback_prompt
+
+
 async def get_client() -> AsyncOpenAI:
     """Get or create a singleton AsyncOpenAI client instance.
     
     Uses a lock to ensure thread-safe initialization. The client is reused
     across calls for connection pooling.
+    
+    IMPORTANT: SDK retries are disabled (max_retries=0) to ensure single-layer
+    retry behavior controlled by get_structured_completion().
     
     Returns:
         Configured AsyncOpenAI client instance
@@ -237,8 +290,9 @@ async def get_client() -> AsyncOpenAI:
                         "OPENAI_API_KEY environment variable is not set. "
                         "Please configure it in .env or secrets.toml"
                     )
-                _client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-                logger.info("Initialized AsyncOpenAI client")
+                # Disable SDK-level retries to implement single-layer retry
+                _client = AsyncOpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+                logger.info("Initialized AsyncOpenAI client with max_retries=0 (single-layer retry)")
     
     return _client
 
@@ -376,25 +430,40 @@ async def get_structured_completion(
     
     # Retry loop for transient errors
     last_error: Exception | None = None
+    is_smart_retry = False  # Track if we're using fallback strategy
     
     for attempt in range(max_retries + 1):
         try:
-            logger.debug(
-                f"OpenAI API call attempt {attempt + 1}/{max_retries + 1} "
-                f"(model={model_name}, schema={schema_model.__name__})"
+            # Determine request type for logging
+            request_type = "grading_structured" if attempt == 0 else "grading_fallback_plain_json"
+            
+            logger.info(
+                f"OpenAI API call attempt {attempt + 1} of {max_retries + 1} "
+                f"(model={model_name}, schema={schema_model.__name__}, type={request_type})"
             )
             
-            # Make API call with structured output
-            # Build request kwargs dynamically based on token parameter
-            api_kwargs = {
-                "model": model_name,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": temperature,
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": json_schema,
-                },
-            }
+            # SMART RETRY: On attempt 2+, use fallback plain JSON instead of strict schema
+            if attempt > 0 and is_smart_retry:
+                # Build fallback prompt that requests plain JSON
+                fallback_prompt = _build_fallback_prompt(prompt, schema_model)
+                
+                # Use plain JSON mode without strict schema enforcement
+                api_kwargs = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": fallback_prompt}],
+                    "response_format": {"type": "json_object"},  # Plain JSON, no schema
+                }
+                logger.info("Using smart retry with fallback plain JSON (no strict schema)")
+            else:
+                # Normal request with strict schema validation
+                api_kwargs = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": json_schema,
+                    },
+                }
             
             # Add token limit parameter if specified
             api_kwargs.update(token_kwargs)
@@ -413,6 +482,7 @@ async def get_structured_completion(
                     schema_name=schema_model.__name__,
                     temperature=api_kwargs.get("temperature"),
                     max_tokens=api_kwargs.get(token_param),
+                    request_type=request_type,
                 )
             
             response = await client.chat.completions.create(**api_kwargs)
@@ -455,12 +525,14 @@ async def get_structured_completion(
                         output_parsed=None,
                     )
                 
-                # Empty response is retryable if retry_empty_response is True
+                # Empty response is retryable with smart retry
                 if retry_empty_response and attempt < max_retries:
                     logger.warning(
-                        f"Empty response on attempt {attempt + 1}/{max_retries + 1}, retrying..."
+                        f"Empty response on attempt {attempt + 1} of {max_retries + 1}, "
+                        f"will retry with fallback strategy"
                         f"{f' (correlation_id={correlation_id})' if correlation_id else ''}"
                     )
+                    is_smart_retry = True  # Enable fallback for next attempt
                     delay = _calculate_jittered_delay(retry_delay)
                     logger.debug(f"Retrying in {delay:.2f} seconds...")
                     await asyncio.sleep(delay)
@@ -522,8 +594,19 @@ async def get_structured_completion(
                     f"{f' (correlation_id={correlation_id})' if correlation_id else ''}"
                 )
                 
+                # Smart retry for parse failures (if not already using fallback)
+                if not is_smart_retry and attempt < max_retries:
+                    logger.warning(
+                        f"Parse failure on attempt {attempt + 1} of {max_retries + 1}, "
+                        f"will retry with fallback strategy"
+                    )
+                    is_smart_retry = True  # Enable fallback for next attempt
+                    await asyncio.sleep(retry_delay)
+                    continue
+                
                 # If repair is allowed and this is our first attempt, retry once
-                if allow_repair and attempt == 0:
+                # (legacy path, deprecated in favor of smart retry)
+                if allow_repair and attempt == 0 and not is_smart_retry:
                     logger.warning(
                         "Attempting repair retry for schema validation failure"
                     )
@@ -544,7 +627,7 @@ async def get_structured_completion(
             # Network/timeout errors - retryable
             last_error = e
             logger.warning(
-                f"Transient error on attempt {attempt + 1}/{max_retries + 1}: "
+                f"Transient error on attempt {attempt + 1} of {max_retries + 1}: "
                 f"{type(e).__name__}"
             )
             
@@ -564,7 +647,7 @@ async def get_structured_completion(
         except RateLimitError as e:
             # Rate limit - retryable with Retry-After header
             last_error = e
-            logger.warning(f"Rate limit hit on attempt {attempt + 1}/{max_retries + 1}")
+            logger.warning(f"Rate limit hit on attempt {attempt + 1} of {max_retries + 1}")
             
             if attempt < max_retries:
                 # Check for Retry-After header
@@ -595,7 +678,7 @@ async def get_structured_completion(
             if status_code and 500 <= status_code < 600:
                 logger.warning(
                     f"Server error {status_code} on attempt "
-                    f"{attempt + 1}/{max_retries + 1}"
+                    f"{attempt + 1} of {max_retries + 1}"
                 )
                 
                 if attempt < max_retries:
@@ -611,8 +694,11 @@ async def get_structured_completion(
                     attempt_count=max_retries + 1,
                 ) from e
             
-            # Don't retry 4xx errors (client errors)
-            logger.error(f"Non-retryable API error: {str(e)}")
+            # Don't retry 4xx errors (client errors like invalid_request_error, context_length_exceeded)
+            logger.error(
+                f"Non-retryable API error (attempt {attempt + 1} of {max_retries + 1}): "
+                f"{status_code} - {str(e)}"
+            )
             raise OpenAITransportError(
                 f"API error: {str(e)}",
                 status_code=status_code,
