@@ -19,7 +19,6 @@ from datetime import datetime
 from typing import Optional
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Inches
@@ -78,7 +77,14 @@ def add_horizontal_line(paragraph, color: RGBColor = CPCC_LIGHT_BLUE, height: in
     bottom.set(qn('w:val'), 'single')
     bottom.set(qn('w:sz'), str(height // 1000))  # Convert to eighths of a point
     bottom.set(qn('w:space'), '1')
-    bottom.set(qn('w:color'), f'{color.rgb:06X}')
+    # Convert RGBColor to hex string (color is an integer in python-docx)
+    if isinstance(color, RGBColor):
+        # RGBColor stores color as an integer, convert to hex
+        color_hex = f'{color:06X}'
+    else:
+        # Fallback for raw integer
+        color_hex = f'{color:06X}'
+    bottom.set(qn('w:color'), color_hex)
     
     pBdr.append(bottom)
     pPr.append(pBdr)
