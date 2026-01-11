@@ -9,7 +9,9 @@ JSON Schema response format validation.
 Key Features:
 - AsyncOpenAI client for concurrent processing
 - Strict JSON Schema validation using Pydantic models
-- Bounded retry logic for transient errors (timeouts, 5xx, rate limits, empty responses)
+- Single-layer smart retry logic (2 attempts max: initial + 1 fallback retry)
+- Fallback to plain JSON mode on empty/parse failures
+- Preprocessing digest generation for large inputs (no truncation)
 - Clear custom exceptions for different failure modes
 - Optional validation repair attempt flag
 - Thread-safe and async-safe design
@@ -40,6 +42,7 @@ Example usage:
 """
 
 import asyncio
+import json
 import random
 from typing import Type, TypeVar
 
@@ -50,7 +53,7 @@ from openai import (
     AsyncOpenAI,
     RateLimitError,
 )
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 
 from cqc_cpcc.utilities.AI.openai_debug import (
     create_correlation_id,
@@ -67,6 +70,46 @@ from cqc_cpcc.utilities.env_constants import OPENAI_API_KEY
 from cqc_cpcc.utilities.logger import logger
 
 T = TypeVar("T", bound=BaseModel)
+
+
+# Pydantic models for preprocessing digest
+class ComponentInfo(BaseModel):
+    """Information about a key component in student code."""
+    name: str = Field(description="Component name")
+    type: str = Field(description="Type: function, class, method, variable")
+    signature: str = Field(description="Signature or declaration")
+    behavior: str = Field(description="What it does")
+
+
+class DetectedIssue(BaseModel):
+    """Issue detected in student code."""
+    issue: str = Field(description="Description of the issue")
+    location: str = Field(description="Location reference (file:line or file:function)")
+
+
+class FileDigest(BaseModel):
+    """Digest for a single file in student submission."""
+    filename: str = Field(description="Name of the file")
+    purpose: str = Field(description="Purpose and overall structure")
+    structure: str = Field(description="High-level structure description")
+    key_components: list[ComponentInfo] = Field(description="Key functions/classes/methods")
+    notable_logic: str = Field(description="Notable logic patterns")
+    io_behavior: str = Field(description="Input/output behavior")
+    detected_issues: list[DetectedIssue] = Field(description="Issues found in this file")
+
+
+class CompletenessCheck(BaseModel):
+    """Assessment of submission completeness."""
+    required_components_present: list[str] = Field(description="Required components that are present")
+    missing_components: list[str] = Field(description="Required components that are missing")
+
+
+class PreprocessingDigest(BaseModel):
+    """Comprehensive grading digest from preprocessing stage."""
+    files: list[FileDigest] = Field(description="Per-file analysis")
+    overall_assessment: str = Field(description="Overall submission assessment")
+    completeness_check: CompletenessCheck = Field(description="Completeness assessment")
+
 
 # Default retry configuration
 # IMPORTANT: Single-layer retry strategy
@@ -262,6 +305,172 @@ Example format:
 }}
 """
     return fallback_prompt
+
+
+# Preprocessing configuration
+PREPROCESSING_TOKEN_THRESHOLD = 0.70  # Trigger preprocessing at 70% of context window
+CHARS_PER_TOKEN_ESTIMATE = 4  # Conservative estimate for token counting
+
+
+def should_use_preprocessing(student_code: str, context_window: int = 128_000) -> bool:
+    """Check if preprocessing should be used based on input size.
+    
+    Args:
+        student_code: Raw student submission code
+        context_window: Model context window size (default: 128K for GPT-5)
+        
+    Returns:
+        True if preprocessing should be used, False otherwise
+    """
+    estimated_tokens = len(student_code) // CHARS_PER_TOKEN_ESTIMATE
+    threshold_tokens = int(context_window * PREPROCESSING_TOKEN_THRESHOLD)
+    
+    if estimated_tokens > threshold_tokens:
+        logger.info(
+            f"Preprocessing triggered: {estimated_tokens} est. tokens > "
+            f"{threshold_tokens} threshold ({PREPROCESSING_TOKEN_THRESHOLD*100}% of {context_window})"
+        )
+        return True
+    
+    return False
+
+
+def _build_preprocessing_prompt(
+    student_code: str,
+    assignment_instructions: str,
+    rubric_config: str = "",
+) -> str:
+    """Build prompt for preprocessing stage that creates grading digest.
+    
+    The preprocessing stage condenses large student submissions into a compact,
+    lossless-for-grading representation that preserves all relevant details
+    for accurate assessment without exceeding context limits.
+    
+    Args:
+        student_code: Full student submission (all files)
+        assignment_instructions: Assignment requirements and instructions
+        rubric_config: Rubric or error criteria (optional)
+        
+    Returns:
+        Preprocessing prompt
+    """
+    prompt = f"""You are a teaching assistant creating a grading digest for an instructor.
+
+TASK:
+Analyze the full student submission below and create a COMPREHENSIVE grading digest that preserves ALL information needed for accurate grading. This digest will replace the raw code in the grading request.
+
+ASSIGNMENT INSTRUCTIONS:
+{assignment_instructions}
+
+{f"GRADING CRITERIA:\n{rubric_config}\n" if rubric_config else ""}
+
+STUDENT SUBMISSION (FULL CODE):
+{student_code}
+
+CREATE GRADING DIGEST:
+For each file in the submission, provide:
+1. File purpose and overall structure
+2. Key functions/classes/methods with signatures
+3. Notable logic patterns (loops, conditionals, algorithms)
+4. Input/output behavior
+5. Any detected issues or concerns (with file+line references where possible)
+
+REQUIREMENTS:
+- Preserve enough detail for accurate grading without re-seeing raw code
+- Include specific file and line references for any issues
+- Capture algorithm logic, not just existence of functions
+- Note missing required components
+- Keep digest compact but comprehensive
+
+Return ONLY valid JSON with this structure (no markdown):
+{{
+  "files": [
+    {{
+      "filename": "string",
+      "purpose": "string",
+      "structure": "string",
+      "key_components": [
+        {{
+          "name": "string",
+          "type": "function|class|method|variable",
+          "signature": "string",
+          "behavior": "string"
+        }}
+      ],
+      "notable_logic": "string",
+      "io_behavior": "string",
+      "detected_issues": [
+        {{
+          "issue": "string",
+          "location": "file:line or file:function"
+        }}
+      ]
+    }}
+  ],
+  "overall_assessment": "string",
+  "completeness_check": {{
+    "required_components_present": ["string"],
+    "missing_components": ["string"]
+  }}
+}}
+"""
+    return prompt
+
+
+async def generate_preprocessing_digest(
+    student_code: str,
+    assignment_instructions: str,
+    rubric_config: str = "",
+    model_name: str = DEFAULT_MODEL,
+) -> PreprocessingDigest:
+    """Generate a preprocessing digest for large student submissions.
+    
+    This function creates a compact, comprehensive representation of student code
+    that preserves all information needed for grading without including the raw code.
+    This prevents context_length_exceeded errors while maintaining grading accuracy.
+    
+    Args:
+        student_code: Full student submission (all files)
+        assignment_instructions: Assignment requirements
+        rubric_config: Rubric or error criteria (optional)
+        model_name: Model to use (default: gpt-5-mini)
+        
+    Returns:
+        PreprocessingDigest with comprehensive analysis
+        
+    Raises:
+        OpenAISchemaValidationError: If digest generation fails validation
+        OpenAITransportError: If API call fails after retries
+    """
+    prompt = _build_preprocessing_prompt(
+        student_code=student_code,
+        assignment_instructions=assignment_instructions,
+        rubric_config=rubric_config,
+    )
+    
+    logger.info(
+        f"Generating preprocessing digest for {len(student_code)} chars "
+        f"(~{len(student_code)//CHARS_PER_TOKEN_ESTIMATE} est. tokens)"
+    )
+    
+    # Call with own 2-attempt retry logic
+    digest = await get_structured_completion(
+        prompt=prompt,
+        model_name=model_name,
+        schema_model=PreprocessingDigest,
+        max_retries=DEFAULT_MAX_RETRIES,  # 2 attempts total
+    )
+    
+    # Save digest to debug artifacts if debug enabled
+    if should_debug():
+        try:
+            digest_json = digest.model_dump_json(indent=2)
+            logger.debug(f"Preprocessing digest generated: {len(digest_json)} chars")
+            # The record_request/record_response in get_structured_completion already saves this
+        except Exception as e:
+            logger.warning(f"Failed to save preprocessing digest: {e}")
+    
+    return digest
 
 
 async def get_client() -> AsyncOpenAI:
