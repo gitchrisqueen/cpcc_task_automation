@@ -51,18 +51,33 @@ This means you can upload BrightSpace downloads directly without needing to repa
 
 ### BrightSpace Format
 
-The system also supports BrightSpace's default ZIP format with delimiter pattern:
+The system supports BrightSpace's default ZIP format with delimiter patterns:
 
+**Simple BrightSpace format:**
 ```
 submission.zip/
-  ├── Assignment1 - John Doe/
+  ├── Assignment - John Doe/
   │   ├── Main.java
   │   └── Helper.java
-  ├── Assignment1 - Jane Smith/
-  │   └── script.py
-  └── Assignment1 - Bob Johnson/
-      └── program.cpp
+  └── Assignment - Jane Smith/
+      └── script.py
 ```
+
+**BrightSpace with timestamps (most common):**
+```
+submission.zip/
+  └── Programming Exam 1/              ← Wrapper folder
+      ├── 39786-640693 - Aiden Rodriguez - Oct 10, 2025 1022 AM/
+      │   ├── Main.java
+      │   └── Helper.java
+      └── 39787-640694 - Jane Smith - Oct 11, 2025 1130 AM/
+          └── script.py
+```
+
+**How it works:**
+- The system looks for the delimiter pattern ` - ` (space-dash-space) in folder names
+- For BrightSpace format `ID - Student Name - Timestamp`, it extracts the **middle part** (Student Name)
+- This matches BrightSpace's actual download format from their gradebook system
 
 The system will automatically parse the student name from the folder structure.
 

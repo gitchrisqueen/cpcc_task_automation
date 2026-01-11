@@ -284,19 +284,34 @@ def extract_student_submissions_from_zip(
             
             # Parse student identifier from directory
             # Handle "Assignment - Student Name" format (BrightSpace)
+            # BrightSpace format is typically: "ID - Student Name - Timestamp"
+            # or "Assignment - Student Name"
+            # We want the second part (index 1) which is the student name
             folder_name_delimiter = ' - '
             if folder_name_delimiter in directory_name:
-                # Take last part after delimiter (student name)
-                student_id = directory_name.split(folder_name_delimiter)[-1]
+                parts = directory_name.split(folder_name_delimiter)
+                if len(parts) >= 2:
+                    # Take the second part (index 1) as student name
+                    student_id = parts[1]
+                else:
+                    # Fallback if split doesn't work as expected
+                    student_id = directory_name.split('/')[0].split('\\')[0]
             else:
                 # Use top-level folder name as student ID
                 # Handle nested paths: "Student1/subfolder/file.java" -> "Student1"
                 student_id = directory_name.split('/')[0].split('\\')[0]
             
             # Check file extension
-            file_ext = Path(file_name).suffix.lower()
-            if file_ext not in accepted_file_types and f'.{file_ext.lstrip(".")}' not in accepted_file_types:
-                logger.debug(f"Skipping file with unaccepted type: {file_name} ({file_ext})")
+            # accepted_file_types can contain extensions with or without dots
+            # e.g., ['java', 'txt'] or ['.java', '.txt']
+            # Normalize by removing dots for comparison
+            file_ext = Path(file_name).suffix.lower().lstrip('.')  # e.g., 'java' from 'Main.java'
+            
+            # Normalize accepted types (remove dots if present)
+            normalized_accepted = [ext.lstrip('.') for ext in accepted_file_types]
+            
+            if file_ext not in normalized_accepted:
+                logger.debug(f"Skipping file with unaccepted type: {file_name} (extension: .{file_ext}, accepted: {normalized_accepted})")
                 continue
             
             # Skip files with ignored prefixes
