@@ -13,6 +13,8 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import BaseModel, Field
+
 from cqc_cpcc.utilities.AI.openai_client import (
     get_structured_completion,
 )
@@ -20,7 +22,6 @@ from cqc_cpcc.utilities.AI.openai_exceptions import (
     OpenAISchemaValidationError,
     OpenAITransportError,
 )
-from pydantic import BaseModel, Field
 
 
 # Test Pydantic model

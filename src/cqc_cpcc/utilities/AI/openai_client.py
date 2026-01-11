@@ -52,17 +52,17 @@ from openai import (
 )
 from pydantic import BaseModel, ValidationError
 
+from cqc_cpcc.utilities.AI.openai_debug import (
+    create_correlation_id,
+    record_request,
+    record_response,
+    should_debug,
+)
 from cqc_cpcc.utilities.AI.openai_exceptions import (
     OpenAISchemaValidationError,
     OpenAITransportError,
 )
 from cqc_cpcc.utilities.AI.schema_normalizer import normalize_json_schema_for_openai
-from cqc_cpcc.utilities.AI.openai_debug import (
-    should_debug,
-    create_correlation_id,
-    record_request,
-    record_response,
-)
 from cqc_cpcc.utilities.env_constants import OPENAI_API_KEY
 from cqc_cpcc.utilities.logger import logger
 
@@ -647,9 +647,11 @@ def _get_test_mode_response(schema_model: Type[T]) -> T:
     Returns:
         Instance of schema_model with test data
     """
-    from cqc_cpcc.rubric_models import RubricAssessmentResult, CriterionResult
-    from cqc_cpcc.exam_review import ErrorDefinitions, MajorError, MinorError, MajorErrorType, MinorErrorType
-    from cqc_cpcc.project_feedback import FeedbackGuide, Feedback, FeedbackType
+    from cqc_cpcc.exam_review import (
+        ErrorDefinitions,
+    )
+    from cqc_cpcc.project_feedback import Feedback, FeedbackGuide, FeedbackType
+    from cqc_cpcc.rubric_models import CriterionResult, RubricAssessmentResult
     
     model_name = schema_model.__name__
     
