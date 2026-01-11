@@ -343,6 +343,11 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
     from cqc_cpcc.error_scoring import normalize_errors, select_program_performance_level, get_error_count_for_severity
     from cqc_cpcc.scoring import score_level_band_criterion, aggregate_rubric_result
     
+    logger.info(f"=== Backend Scoring Start ===")
+    logger.info(f"Input result: total_points_earned={result.total_points_earned}, total_points_possible={result.total_points_possible}")
+    logger.info(f"Input result has {len(result.criteria_results)} criterion results")
+    logger.info(f"Input result error_counts_by_severity: {result.error_counts_by_severity}")
+    
     # Identify criteria that need backend scoring
     level_band_criteria = [c for c in rubric.criteria if c.enabled and c.scoring_mode == "level_band"]
     error_count_criteria = [c for c in rubric.criteria if c.enabled and c.scoring_mode == "error_count"]
@@ -351,6 +356,8 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
     has_program_performance = any(
         c.criterion_id == "program_performance" for c in rubric.criteria if c.enabled
     )
+    
+    logger.info(f"Criteria analysis: level_band={len(level_band_criteria)}, error_count={len(error_count_criteria)}, has_program_performance={has_program_performance}")
     
     # If no backend scoring needed, return as-is
     if not level_band_criteria and not error_count_criteria and not has_program_performance:
@@ -373,28 +380,47 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
         
         if not has_error_counts:
             logger.warning(
-                f"Rubric has error-based criteria but no error counts in result. "
-                f"Using 0 errors for scoring."
+                f"Rubric has error-based criteria but no error_counts_by_severity in result."
             )
+            
+            # Try to compute error counts from detected_errors if present
+            if result.detected_errors:
+                logger.info(f"Computing error_counts_by_severity from {len(result.detected_errors)} detected_errors")
+                error_counts = {}
+                for error in result.detected_errors:
+                    severity = error.severity.lower() if error.severity else "unknown"
+                    error_counts[severity] = error_counts.get(severity, 0) + (error.occurrences or 1)
+                
+                logger.info(f"Computed error_counts_by_severity: {error_counts}")
+                # Use the computed counts
+                original_major = error_counts.get("major", 0)
+                original_minor = error_counts.get("minor", 0)
+            else:
+                logger.warning("No detected_errors either. Using 0 errors for scoring.")
+                # Default to 0 errors
+                original_major = 0
+                original_minor = 0
         else:
             # Extract error counts by severity
             original_major = get_error_count_for_severity(result.error_counts_by_severity, "major")
             original_minor = get_error_count_for_severity(result.error_counts_by_severity, "minor")
-            
-            logger.info(
-                f"Original error counts: {original_major} major, {original_minor} minor"
-            )
-            
-            # Apply error normalization (4 minor = 1 major for CSC151)
-            effective_major, effective_minor = normalize_errors(original_major, original_minor)
-            
-            logger.info(
-                f"Effective error counts after normalization: {effective_major} major, {effective_minor} minor"
-            )
+        
+        logger.info(
+            f"Original error counts: {original_major} major, {original_minor} minor"
+        )
+        
+        # Apply error normalization (4 minor = 1 major for CSC151)
+        effective_major, effective_minor = normalize_errors(original_major, original_minor)
+        
+        logger.info(
+            f"Effective error counts after normalization: {effective_major} major, {effective_minor} minor"
+        )
     
     # Update criterion results with computed scores
     updated_criteria_results = []
     for criterion_result in result.criteria_results:
+        logger.info(f"Processing criterion '{criterion_result.criterion_id}': current points_earned={criterion_result.points_earned}, selected_level_label='{criterion_result.selected_level_label}'")
+        
         # Find corresponding rubric criterion
         rubric_criterion = next(
             (c for c in rubric.criteria if c.criterion_id == criterion_result.criterion_id),
@@ -408,14 +434,19 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
             updated_criteria_results.append(criterion_result)
             continue
         
+        logger.info(f"Rubric criterion found: scoring_mode='{rubric_criterion.scoring_mode}', criterion_id='{rubric_criterion.criterion_id}'")
+        
         # Handle different scoring modes
         if rubric_criterion.criterion_id == "program_performance":
             # Special handling for CSC151 v2.0 program_performance criterion
+            logger.info(f"Using CSC151 program_performance scoring with effective_major={effective_major}, effective_minor={effective_minor}")
             level_label, score = select_program_performance_level(
                 effective_major,
                 effective_minor,
                 assignment_submitted=True  # Assume submitted if we have a result
             )
+            
+            logger.info(f"CSC151 program_performance computed: level_label='{level_label}', score={score}")
             
             # Update the criterion result
             criterion_result.points_earned = score
@@ -482,6 +513,8 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
     # Use scoring engine to aggregate results
     aggregation = aggregate_rubric_result(rubric, updated_criteria_results, recalculate_overall_band=True)
     
+    logger.info(f"Aggregation result: total_points_earned={aggregation['total_points_earned']}, percentage={aggregation['percentage']}, overall_band={aggregation['overall_band_label']}")
+    
     # Create updated result with backend-computed scores
     updated_result = result.model_copy(update={
         "criteria_results": updated_criteria_results,
@@ -497,6 +530,7 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
         f"Backend scoring complete: {updated_result.total_points_earned}/{updated_result.total_points_possible} "
         f"({aggregation['percentage']:.1f}%), band='{updated_result.overall_band_label}'"
     )
+    logger.info(f"=== Backend Scoring End ===")
     
     return updated_result
 
