@@ -32,7 +32,7 @@ from cqc_cpcc.rubric_config import (
     get_rubric_by_id,
     load_error_definitions_from_config
 )
-from cqc_cpcc.rubric_models import Rubric, DetectedError, RubricAssessmentResult
+from cqc_cpcc.rubric_models import Rubric, RubricAssessmentResult
 from cqc_cpcc.rubric_overrides import (
     RubricOverrides,
     CriterionOverride,
@@ -1075,7 +1075,6 @@ async def process_rubric_grading_batch(
     """
     ctx = get_script_run_ctx()
     all_results: list[tuple[str, RubricAssessmentResult]] = []
-    download_placeholder = st.empty()
     
     # Collect all student submissions (from single files or ZIPs)
     student_submissions: dict[str, StudentSubmission] = {}
@@ -1167,11 +1166,17 @@ async def process_rubric_grading_batch(
         # Display summary table
         summary_data = []
         for student_id, result in all_results:
+            # Calculate percentage safely
+            if result.total_points_possible > 0:
+                percentage = f"{(result.total_points_earned / result.total_points_possible * 100):.1f}%"
+            else:
+                percentage = "N/A"
+            
             summary_data.append({
                 "Student": student_id,
                 "Points Earned": result.total_points_earned,
                 "Points Possible": result.total_points_possible,
-                "Percentage": f"{(result.total_points_earned / result.total_points_possible * 100):.1f}%",
+                "Percentage": percentage,
                 "Band": result.overall_band_label or "N/A",
             })
         
@@ -1182,8 +1187,12 @@ async def process_rubric_grading_batch(
             
             # Calculate statistics
             avg_score = summary_df["Points Earned"].mean()
-            avg_pct = (avg_score / effective_rubric.total_points_possible * 100)
-            st.metric("Average Score", f"{avg_score:.1f}/{effective_rubric.total_points_possible} ({avg_pct:.1f}%)")
+            if effective_rubric.total_points_possible > 0:
+                avg_pct = (avg_score / effective_rubric.total_points_possible * 100)
+                st.metric("Average Score", f"{avg_score:.1f}/{effective_rubric.total_points_possible} ({avg_pct:.1f}%)")
+            else:
+                logger.warning("Effective rubric has zero total_points_possible; skipping average percentage calculation.")
+                st.metric("Average Score", f"{avg_score:.1f}/0 (N/A%)")
     
     if failure_count > 0:
         st.error(f"❌ {failure_count} submission(s) failed to grade")

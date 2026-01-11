@@ -3,10 +3,8 @@
 """Integration tests for rubric-based ZIP batch grading."""
 
 import asyncio
-import tempfile
 import zipfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

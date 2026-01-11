@@ -2,10 +2,7 @@
 
 """Unit tests for ZIP-based student batch grading utilities."""
 
-import os
-import tempfile
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -15,7 +12,6 @@ from cqc_cpcc.utilities.zip_grading_utils import (
     get_file_priority,
     extract_student_submissions_from_zip,
     build_submission_text_with_token_limit,
-    StudentSubmission,
     CHARS_PER_TOKEN,
 )
 

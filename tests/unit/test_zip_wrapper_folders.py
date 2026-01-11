@@ -3,7 +3,6 @@
 """Test for wrapper folder handling in ZIP extraction."""
 
 import zipfile
-from pathlib import Path
 
 import pytest
 

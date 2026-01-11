@@ -3,7 +3,6 @@
 """Test for BrightSpace ZIP format compatibility."""
 
 import zipfile
-from pathlib import Path
 
 import pytest
 

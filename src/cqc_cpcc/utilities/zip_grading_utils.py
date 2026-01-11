@@ -102,11 +102,17 @@ class StudentSubmission:
     Attributes:
         student_id: Unique identifier (folder name or derived)
         student_name: Display name
-        files: Dict mapping filename to temp file path
+        files: Dict mapping filename to temp file path (created with delete=False)
         total_chars: Total character count across all files
         estimated_tokens: Estimated token count
         is_truncated: Whether files were omitted due to size
         omitted_files: List of filenames that were omitted
+    
+    Note:
+        Temporary files in the `files` dict are created with `delete=False` and must
+        be manually cleaned up by the caller after use. This is by design to allow
+        the files to be read multiple times during grading. Callers should use
+        `os.unlink(filepath)` to remove temp files when done.
     """
     student_id: str
     student_name: str
@@ -400,17 +406,16 @@ def extract_student_submissions_from_zip(
         if wrapper_folder:
             error_msg += f"Detected wrapper folder: '{wrapper_folder}'\n"
         
-        # List what was found
-        all_files = [f.filename for f in zip_ref.infolist() if not f.is_dir()]
-        if all_files:
-            error_msg += f"Found {len(all_files)} file(s) in ZIP but none matched expected structure.\n"
+        # List what was found (use all_paths already collected in with block)
+        if all_paths:
+            error_msg += f"Found {len(all_paths)} file(s) in ZIP but none matched expected structure.\n"
             error_msg += "Expected structure: Student_Name/file.ext or Assignment - Student Name/file.ext\n"
             error_msg += f"Accepted file types: {', '.join(accepted_file_types)}\n"
             error_msg += f"First few files found:\n"
-            for f in all_files[:5]:
+            for f in all_paths[:5]:
                 error_msg += f"  - {f}\n"
-            if len(all_files) > 5:
-                error_msg += f"  ... and {len(all_files) - 5} more\n"
+            if len(all_paths) > 5:
+                error_msg += f"  ... and {len(all_paths) - 5} more\n"
         else:
             error_msg += "ZIP appears to be empty or contains only directories.\n"
         
