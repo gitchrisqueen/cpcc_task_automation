@@ -55,6 +55,7 @@ def sample_assessment_result():
     """Create a sample assessment result."""
     return RubricAssessmentResult(
         rubric_id="test_rubric",
+        rubric_version="1.0",
         total_points_possible=100,
         total_points_earned=85,
         criteria_results=[
