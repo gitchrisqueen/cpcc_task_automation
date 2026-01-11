@@ -10,7 +10,7 @@ import pytest
 
 from cqc_cpcc.rubric_models import (
     Rubric,
-    RubricCriterion,
+    Criterion,
     RubricAssessmentResult,
     CriterionResult,
 )
@@ -30,7 +30,7 @@ def sample_rubric():
         total_points_possible=100,
         course_id="TEST101",
         criteria=[
-            RubricCriterion(
+            Criterion(
                 criterion_id="correctness",
                 name="Correctness",
                 description="Code correctness",
@@ -38,7 +38,7 @@ def sample_rubric():
                 enabled=True,
                 scoring_mode="manual",
             ),
-            RubricCriterion(
+            Criterion(
                 criterion_id="style",
                 name="Code Style",
                 description="Code style and formatting",

@@ -249,11 +249,19 @@ def extract_student_submissions_from_zip(
             if common_parts and len(common_parts) >= 1:
                 # Check if this is likely a wrapper folder (not a student folder)
                 # Heuristic: if there are multiple second-level folders, first level is wrapper
+                # BUT: ignore noise folders like __MACOSX, node_modules, etc.
                 second_level_folders = set()
                 for path in all_paths:
+                    # Skip paths that should be ignored (noise files)
+                    if should_ignore_file(path):
+                        continue
+                    
                     parts = path.split('/')
                     if len(parts) > len(common_parts) + 1:
-                        second_level_folders.add(parts[len(common_parts)])
+                        folder_name = parts[len(common_parts)]
+                        # Don't count noise directories
+                        if folder_name not in IGNORE_DIRECTORIES:
+                            second_level_folders.add(folder_name)
                 
                 if len(second_level_folders) > 1:
                     wrapper_folder = '/'.join(common_parts)
