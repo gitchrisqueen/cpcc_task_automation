@@ -10,19 +10,21 @@ Tests that the feedback builder:
 - Formats feedback appropriately for student consumption
 """
 
-import pytest
 import re
-from cqc_cpcc.student_feedback_builder import (
-    build_student_feedback,
-    _filter_score_mentions,
-    _extract_strengths,
-    _extract_improvements,
-    _format_error_for_student,
-)
+
+import pytest
+
 from cqc_cpcc.rubric_models import (
-    RubricAssessmentResult,
     CriterionResult,
     DetectedError,
+    RubricAssessmentResult,
+)
+from cqc_cpcc.student_feedback_builder import (
+    _extract_improvements,
+    _extract_strengths,
+    _filter_score_mentions,
+    _format_error_for_student,
+    build_student_feedback,
 )
 
 
@@ -347,9 +349,18 @@ def test_build_student_feedback_groups_errors_by_severity():
         ],
         overall_feedback="Needs work.",
         detected_errors=[
-            DetectedError(code="ERR1", name="Major Error 1", severity="major", description="Desc 1"),
-            DetectedError(code="ERR2", name="Minor Error 1", severity="minor", description="Desc 2"),
-            DetectedError(code="ERR3", name="Major Error 2", severity="major", description="Desc 3"),
+            DetectedError(
+                code="ERR1", name="Major Error 1",
+                severity="major", description="Desc 1"
+            ),
+            DetectedError(
+                code="ERR2", name="Minor Error 1",
+                severity="minor", description="Desc 2"
+            ),
+            DetectedError(
+                code="ERR3", name="Major Error 2",
+                severity="major", description="Desc 3"
+            ),
         ]
     )
     
@@ -377,7 +388,10 @@ def test_build_student_feedback_limits_strengths_and_improvements():
                 criterion_name=f"Criterion {i}",
                 points_possible=10,
                 points_earned=9 if i < 5 else 3,  # First 5 high, last 5 low
-                feedback=f"Excellent work on criterion {i}" if i < 5 else f"Needs improvement on criterion {i}"
+                feedback=(
+                    f"Excellent work on criterion {i}" if i < 5
+                    else f"Needs improvement on criterion {i}"
+                )
             )
         )
     

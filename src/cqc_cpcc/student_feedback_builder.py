@@ -2,8 +2,9 @@
 
 """Student-facing feedback builder for grading results.
 
-This module provides functions to convert grading results (RubricAssessmentResult)
-into student-friendly feedback text that can be copied and pasted into an LMS comment box.
+This module provides functions to convert grading results
+(RubricAssessmentResult) into student-friendly feedback text that
+can be copied and pasted into an LMS comment box.
 
 The feedback:
 - Is direct and constructive
@@ -19,6 +20,7 @@ Usage:
 """
 
 from typing import Optional
+
 from cqc_cpcc.rubric_models import RubricAssessmentResult
 
 
@@ -85,8 +87,14 @@ def build_student_feedback(
         lines.append("")
         
         # Group by severity
-        major_errors = [e for e in result.detected_errors if e.severity.lower() == "major"]
-        minor_errors = [e for e in result.detected_errors if e.severity.lower() == "minor"]
+        major_errors = [
+            e for e in result.detected_errors
+            if e.severity.lower() == "major"
+        ]
+        minor_errors = [
+            e for e in result.detected_errors
+            if e.severity.lower() == "minor"
+        ]
         
         if major_errors:
             lines.append("*Major Issues:*")
@@ -121,8 +129,9 @@ def _filter_score_mentions(text: str) -> str:
     
     filtered_lines = []
     for line in text.split("\n"):
-        # Skip lines with score patterns like "85%", "25/30", "score:", "points:"
-        if re.search(r'\d+\s*[/%]|\d+\s*/\s*\d+|score|points|percentage|earned', line, re.IGNORECASE):
+        # Skip lines with score patterns like "85%", "25/30", etc.
+        pattern = r'\d+\s*[/%]|\d+\s*/\s*\d+|score|points|percentage|earned'
+        if re.search(pattern, line, re.IGNORECASE):
             continue
         filtered_lines.append(line)
     
@@ -143,16 +152,26 @@ def _extract_strengths(result: RubricAssessmentResult) -> list[str]:
     for criterion_result in result.criteria_results:
         # Consider a criterion a "strength" if earned >= 80% of possible
         if criterion_result.points_possible > 0:
-            percentage = criterion_result.points_earned / criterion_result.points_possible
+            percentage = (
+                criterion_result.points_earned
+                / criterion_result.points_possible
+            )
             
             if percentage >= 0.8:
                 # Extract positive feedback
                 feedback = criterion_result.feedback
                 # Look for positive indicators
-                positive_keywords = ['good', 'excellent', 'strong', 'well', 'effective', 'clear', 'thorough']
-                if any(keyword in feedback.lower() for keyword in positive_keywords):
+                positive_keywords = [
+                    'good', 'excellent', 'strong', 'well',
+                    'effective', 'clear', 'thorough'
+                ]
+                if any(keyword in feedback.lower()
+                       for keyword in positive_keywords):
                     # Use criterion name as qualifier
-                    strength = f"{criterion_result.criterion_name}: {_summarize_feedback(feedback, positive=True)}"
+                    summary = _summarize_feedback(feedback, positive=True)
+                    strength = (
+                        f"{criterion_result.criterion_name}: {summary}"
+                    )
                     strengths.append(strength)
     
     # Limit to 2-4 strengths
@@ -171,15 +190,21 @@ def _extract_improvements(result: RubricAssessmentResult) -> list[str]:
     improvements = []
     
     for criterion_result in result.criteria_results:
-        # Consider a criterion an "improvement area" if earned < 80% of possible
+        # Consider a criterion an "improvement area" if < 80%
         if criterion_result.points_possible > 0:
-            percentage = criterion_result.points_earned / criterion_result.points_possible
+            percentage = (
+                criterion_result.points_earned
+                / criterion_result.points_possible
+            )
             
             if percentage < 0.8:
                 # Extract constructive feedback
                 feedback = criterion_result.feedback
                 # Use criterion name as qualifier
-                improvement = f"{criterion_result.criterion_name}: {_summarize_feedback(feedback, positive=False)}"
+                summary = _summarize_feedback(feedback, positive=False)
+                improvement = (
+                    f"{criterion_result.criterion_name}: {summary}"
+                )
                 improvements.append(improvement)
     
     # Limit to 2-6 improvements

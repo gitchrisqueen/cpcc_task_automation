@@ -8,40 +8,60 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 from streamlit.runtime.scriptrunner import add_script_run_ctx
-from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx, ScriptRunContext
-
-from cqc_cpcc.exam_review import MajorErrorType, MinorErrorType, CodeGrader, parse_error_type_enum_name
-from cqc_cpcc.utilities.AI.llm_deprecated.chains import generate_assignment_feedback_grade
-from cqc_cpcc.utilities.utils import dict_to_markdown_table, read_file, wrap_code_in_markdown_backticks, \
-    extract_and_read_zip
-from cqc_cpcc.utilities.zip_grading_utils import (
-    extract_student_submissions_from_zip,
-    build_submission_text_with_token_limit,
-    StudentSubmission,
+from streamlit.runtime.scriptrunner_utils.script_run_context import (
+    ScriptRunContext,
+    get_script_run_ctx,
 )
-from cqc_cpcc.utilities.logger import logger
-from cqc_streamlit_app.initi_pages import init_session_state
-from cqc_streamlit_app.utils import get_cpcc_css, define_chatGPTModel, get_custom_llm, add_upload_file_element, \
-    get_language_from_file_path, on_download_click, create_zip_file, prefix_content_file_name, \
-    ChatGPTStatusCallbackHandler, get_file_extension_from_filepath
+
+from cqc_cpcc.error_definitions_models import ErrorDefinition
+from cqc_cpcc.exam_review import (
+    CodeGrader,
+    MajorErrorType,
+    MinorErrorType,
+    parse_error_type_enum_name,
+)
 
 # Import rubric system
 from cqc_cpcc.rubric_config import (
     get_distinct_course_ids,
     get_rubrics_for_course,
-    get_rubric_by_id,
-    load_error_definitions_from_config
-)
-from cqc_cpcc.rubric_models import Rubric, RubricAssessmentResult
-from cqc_cpcc.rubric_overrides import (
-    RubricOverrides,
-    CriterionOverride,
-    PerformanceLevelOverride,
-    merge_rubric_overrides,
-    validate_overrides_compatible
 )
 from cqc_cpcc.rubric_grading import grade_with_rubric
-from cqc_cpcc.error_definitions_models import ErrorDefinition
+from cqc_cpcc.rubric_models import Rubric, RubricAssessmentResult
+from cqc_cpcc.rubric_overrides import (
+    CriterionOverride,
+    RubricOverrides,
+    merge_rubric_overrides,
+    validate_overrides_compatible,
+)
+from cqc_cpcc.utilities.AI.llm_deprecated.chains import (
+    generate_assignment_feedback_grade,
+)
+from cqc_cpcc.utilities.logger import logger
+from cqc_cpcc.utilities.utils import (
+    dict_to_markdown_table,
+    extract_and_read_zip,
+    read_file,
+    wrap_code_in_markdown_backticks,
+)
+from cqc_cpcc.utilities.zip_grading_utils import (
+    StudentSubmission,
+    build_submission_text_with_token_limit,
+    extract_student_submissions_from_zip,
+)
+from cqc_streamlit_app.initi_pages import init_session_state
+from cqc_streamlit_app.utils import (
+    ChatGPTStatusCallbackHandler,
+    add_upload_file_element,
+    create_zip_file,
+    define_chatGPTModel,
+    get_cpcc_css,
+    get_custom_llm,
+    get_file_extension_from_filepath,
+    get_language_from_file_path,
+    on_download_click,
+    prefix_content_file_name,
+)
 
 # Initialize session state variables
 init_session_state()
@@ -56,14 +76,11 @@ DESCRIPTION = "Description"
 
 # Import error definitions system
 from cqc_cpcc.error_definitions_config import (
-    load_error_config_registry,
-    get_error_definitions,
-    get_distinct_course_ids_from_errors,
-    get_assignments_for_course,
     add_assignment_to_course,
-    registry_to_json_string
+    get_assignments_for_course,
+    load_error_config_registry,
+    registry_to_json_string,
 )
-from cqc_cpcc.error_definitions_models import ErrorDefinition
 
 
 def define_grading_rubric():
