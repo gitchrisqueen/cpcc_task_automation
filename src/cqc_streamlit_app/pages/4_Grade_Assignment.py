@@ -981,7 +981,10 @@ async def grade_single_rubric_student(
     
     status_label = f"Grading: {student_id}"
     
-    with st.status(status_label, expanded=False) as status:
+    # Check if "Expand All" was clicked
+    expanded_state = st.session_state.get('expand_all_students', False)
+    
+    with st.status(status_label, expanded=expanded_state) as status:
         try:
             # Build submission text from files
             status.update(label=f"{status_label} | Building submission text...")
@@ -1122,6 +1125,13 @@ async def process_rubric_grading_batch(
     
     total_students = len(student_submissions)
     st.info(f"📊 Grading {total_students} student submission(s)...")
+    
+    # Add "Expand All" button for student status blocks
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🔽 Expand All Student Results", key="expand_all_students_button"):
+            st.session_state.expand_all_students = True
+            st.rerun()
     
     # Create async tasks for concurrent grading
     # Use gather with return_exceptions=True to ensure one failure doesn't stop others
@@ -1338,9 +1348,33 @@ def display_rubric_assessment_result(result, student_name: str):
         result: RubricAssessmentResult from grading
         student_name: Name of the student for display
     """
+    from cqc_cpcc.student_feedback_builder import build_student_feedback
+    
     st.subheader(f"📊 Results for {student_name}")
     
-    # Overall score
+    # Add Student Feedback section at the top (copy/paste-able)
+    st.markdown("### 📝 Student Feedback (Copy/Paste)")
+    st.markdown("*This feedback is formatted for students and does not include numeric scores.*")
+    
+    # Build student-facing feedback
+    student_feedback = build_student_feedback(result, student_name=student_name)
+    
+    # Display in a text area for easy copying
+    st.text_area(
+        label="Copy this feedback to paste to the student:",
+        value=student_feedback,
+        height=300,
+        key=f"student_feedback_{student_name}",
+        help="Select all text (Ctrl+A or Cmd+A) and copy (Ctrl+C or Cmd+C) to paste into your LMS"
+    )
+    
+    st.markdown("---")  # Visual separator
+    
+    # Instructor View - Detailed Scoring Breakdown
+    st.markdown("### 📊 Instructor View - Detailed Breakdown")
+    st.markdown("*The sections below show detailed scoring information for instructor reference only.*")
+    
+    # Overall score (instructor view)
     score_percentage = (result.total_points_earned / result.total_points_possible * 100) if result.total_points_possible > 0 else 0
     
     col1, col2, col3 = st.columns(3)
@@ -1354,7 +1388,7 @@ def display_rubric_assessment_result(result, student_name: str):
     
     # Display error counts if available
     if result.error_counts_by_severity:
-        st.markdown("### 📋 Error Counts")
+        st.markdown("#### 📋 Error Counts")
         
         # Create columns for error counts
         severity_cols = st.columns(len(result.error_counts_by_severity))
@@ -1378,7 +1412,7 @@ def display_rubric_assessment_result(result, student_name: str):
                 st.dataframe(error_breakdown_df, hide_index=True)
     
     # Per-criterion results
-    st.markdown("### Criterion Breakdown")
+    st.markdown("#### Criterion Breakdown")
     
     for criterion_result in result.criteria_results:
         with st.expander(f"**{criterion_result.criterion_name}** - {criterion_result.points_earned}/{criterion_result.points_possible} pts", expanded=False):
@@ -1394,12 +1428,12 @@ def display_rubric_assessment_result(result, student_name: str):
                     st.code(evidence, language="text")
     
     # Overall feedback
-    st.markdown("### Overall Feedback")
+    st.markdown("#### Overall Feedback (Instructor Notes)")
     st.markdown(result.overall_feedback)
     
     # Detected errors
     if result.detected_errors:
-        st.markdown("### Detected Errors")
+        st.markdown("#### Detected Errors (Detailed)")
         
         major_errors = [e for e in result.detected_errors if e.severity == "major"]
         minor_errors = [e for e in result.detected_errors if e.severity == "minor"]
