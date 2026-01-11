@@ -373,7 +373,13 @@ def test_build_student_feedback_groups_errors_by_severity():
     # Check order (major before minor)
     major_pos = feedback.lower().find("major")
     minor_pos = feedback.lower().find("minor")
-    assert major_pos < minor_pos, "Major errors should appear before minor errors"
+    
+    # Both should be found and major should come first
+    assert major_pos != -1, "Major errors section not found in feedback"
+    assert minor_pos != -1, "Minor errors section not found in feedback"
+    assert major_pos < minor_pos, (
+        "Major errors should appear before minor errors"
+    )
 
 
 @pytest.mark.unit

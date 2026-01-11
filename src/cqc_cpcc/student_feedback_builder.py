@@ -19,6 +19,7 @@ Usage:
     >>> print(feedback_text)
 """
 
+import re
 from typing import Optional
 
 from cqc_cpcc.rubric_models import RubricAssessmentResult
@@ -125,8 +126,6 @@ def _filter_score_mentions(text: str) -> str:
     Returns:
         Filtered text with score mentions removed
     """
-    import re
-    
     filtered_lines = []
     for line in text.split("\n"):
         # Skip lines with score patterns like "85%", "25/30", etc.
