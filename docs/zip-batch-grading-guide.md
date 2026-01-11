@@ -4,6 +4,8 @@
 
 The Rubric Exam grading tab now supports batch grading of multiple students from a single ZIP file upload. This feature implements legacy-style ZIP handling with async grading and token safety.
 
+**New in this version:** Automatic detection and handling of wrapper folders (common in BrightSpace downloads).
+
 ## ZIP Submission Format
 
 ### Folder Structure
@@ -22,6 +24,30 @@ submission.zip/
   └── Student_Name_3/
       └── program.cpp
 ```
+
+### Wrapper Folder Support (NEW)
+
+Many learning management systems (including BrightSpace) create ZIP files with a wrapper folder containing all student submissions. This is now automatically detected and handled:
+
+```
+submission.zip/
+  └── Programming Exam 1/              ← Wrapper folder (auto-detected)
+      ├── Student_Name_1/
+      │   ├── Main.java
+      │   └── Helper.java
+      ├── Student_Name_2/
+      │   └── script.py
+      └── Student_Name_3/
+          └── program.cpp
+```
+
+**How it works:**
+- The system analyzes the ZIP structure on upload
+- If all files share a common top-level folder with multiple subfolders, it's treated as a wrapper
+- The wrapper folder is automatically stripped away
+- Student folders are extracted from one level deeper
+
+This means you can upload BrightSpace downloads directly without needing to repackage them!
 
 ### BrightSpace Format
 

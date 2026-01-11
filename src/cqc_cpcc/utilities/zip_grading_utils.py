@@ -222,7 +222,38 @@ def extract_student_submissions_from_zip(
     students_data: dict[str, StudentSubmission] = {}
     
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        # First pass: group files by student folder
+        # First pass: analyze ZIP structure and detect wrapper folders
+        all_paths = [f.filename for f in zip_ref.infolist() if not f.is_dir()]
+        
+        # Check if there's a common wrapper folder
+        # e.g., "Programming Exam 1/Student1/file.java" -> wrapper is "Programming Exam 1"
+        wrapper_folder = None
+        if all_paths:
+            # Find common prefix path
+            common_parts = []
+            first_path_parts = all_paths[0].split('/')
+            
+            for i, part in enumerate(first_path_parts[:-1]):  # Exclude filename
+                if all(p.split('/')[i] == part if len(p.split('/')) > i else False for p in all_paths):
+                    common_parts.append(part)
+                else:
+                    break
+            
+            # If all files share a common top-level folder, treat it as wrapper
+            if common_parts and len(common_parts) >= 1:
+                # Check if this is likely a wrapper folder (not a student folder)
+                # Heuristic: if there are multiple second-level folders, first level is wrapper
+                second_level_folders = set()
+                for path in all_paths:
+                    parts = path.split('/')
+                    if len(parts) > len(common_parts) + 1:
+                        second_level_folders.add(parts[len(common_parts)])
+                
+                if len(second_level_folders) > 1:
+                    wrapper_folder = '/'.join(common_parts)
+                    logger.info(f"Detected wrapper folder in ZIP: '{wrapper_folder}'")
+        
+        # Second pass: group files by student folder
         student_files: dict[str, list[tuple[str, str]]] = {}  # student_id -> [(filename, zip_path)]
         
         for file_info in zip_ref.infolist():
@@ -235,12 +266,21 @@ def extract_student_submissions_from_zip(
             
             # Skip files in root (no student folder)
             if not directory_name:
+                logger.debug(f"Skipping file in root: {file_name}")
                 continue
             
             # Check if should ignore
             if should_ignore_file(file_info.filename):
                 logger.debug(f"Ignoring file: {file_info.filename}")
                 continue
+            
+            # Remove wrapper folder from directory path if present
+            if wrapper_folder and directory_name.startswith(wrapper_folder):
+                directory_name = directory_name[len(wrapper_folder):].lstrip('/')
+                # If directory is now empty (file was directly in wrapper), skip
+                if not directory_name:
+                    logger.debug(f"Skipping file directly in wrapper folder: {file_name}")
+                    continue
             
             # Parse student identifier from directory
             # Handle "Assignment - Student Name" format (BrightSpace)
@@ -268,6 +308,8 @@ def extract_student_submissions_from_zip(
             if student_id not in student_files:
                 student_files[student_id] = []
             student_files[student_id].append((file_name, file_info.filename))
+        
+        logger.info(f"Found {len(student_files)} potential student folders after parsing")
         
         # Second pass: extract and budget tokens per student
         for student_id, files_list in student_files.items():
@@ -338,7 +380,26 @@ def extract_student_submissions_from_zip(
                 logger.warning(f"No valid files found for student: {student_id}")
     
     if not students_data:
-        raise ValueError(f"No student submissions found in ZIP: {zip_path}")
+        # Provide helpful error message
+        error_msg = f"No student submissions found in ZIP: {zip_path}\n"
+        if wrapper_folder:
+            error_msg += f"Detected wrapper folder: '{wrapper_folder}'\n"
+        
+        # List what was found
+        all_files = [f.filename for f in zip_ref.infolist() if not f.is_dir()]
+        if all_files:
+            error_msg += f"Found {len(all_files)} file(s) in ZIP but none matched expected structure.\n"
+            error_msg += "Expected structure: Student_Name/file.ext or Assignment - Student Name/file.ext\n"
+            error_msg += f"Accepted file types: {', '.join(accepted_file_types)}\n"
+            error_msg += f"First few files found:\n"
+            for f in all_files[:5]:
+                error_msg += f"  - {f}\n"
+            if len(all_files) > 5:
+                error_msg += f"  ... and {len(all_files) - 5} more\n"
+        else:
+            error_msg += "ZIP appears to be empty or contains only directories.\n"
+        
+        raise ValueError(error_msg.strip())
     
     logger.info(f"Extracted {len(students_data)} student submissions from ZIP")
     return students_data
