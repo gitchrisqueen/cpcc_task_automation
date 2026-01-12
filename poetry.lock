@@ -1176,14 +1176,14 @@ langdetect = ["langdetect (>=1.0.0)"]
 
 [[package]]
 name = "datetime"
-version = "5.5"
+version = "6.0"
 description = "This package provides a DateTime data type, as known from Zope. Unless you need to communicate with Zope APIs, you're probably better off using Python's built-in datetime module."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "DateTime-5.5-py3-none-any.whl", hash = "sha256:0abf6c51cb4ba7cee775ca46ccc727f3afdde463be28dbbe8803631fefd4a120"},
-    {file = "DateTime-5.5.tar.gz", hash = "sha256:21ec6331f87a7fcb57bd7c59e8a68bfffe6fcbf5acdbbc7b356d6a9a020191d3"},
+    {file = "datetime-6.0-py3-none-any.whl", hash = "sha256:d19988f0657a4e72c9438344157254a8dcad6aea8cd5ae70a5d1b5a75e5dc930"},
+    {file = "datetime-6.0.tar.gz", hash = "sha256:c1514936d2f901e10c8e08d83bf04e6c9dbd7ca4f244da94fec980980a3bc4d5"},
 ]
 
 [package.dependencies]
@@ -5623,14 +5623,14 @@ pytest = ">=7.0.0"
 
 [[package]]
 name = "pytest-watcher"
-version = "0.6.2"
+version = "0.6.3"
 description = "Automatically rerun your tests on file modifications"
 optional = false
 python-versions = ">=3.9"
 groups = ["test"]
 files = [
-    {file = "pytest_watcher-0.6.2-py3-none-any.whl", hash = "sha256:c8cdf38db7b61f28a6657cf84ffbe856330e6fe619055000f27e87b8dc083c30"},
-    {file = "pytest_watcher-0.6.2.tar.gz", hash = "sha256:41f1fd244ee210d9399c57107692680ca02e519e3218be57d9b1c7a194dc87b1"},
+    {file = "pytest_watcher-0.6.3-py3-none-any.whl", hash = "sha256:83e7748c933087e8276edb6078663e6afa9926434b4fd8b85cf6b32b1d5bec89"},
+    {file = "pytest_watcher-0.6.3.tar.gz", hash = "sha256:842dc904264df0ad2d5264153a66bb452fccfa46598cd6e0a5ef1d19afed9b13"},
 ]
 
 [package.dependencies]
@@ -8101,4 +8101,5 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "dfcc614ffecdb9185f98d954c0c36854e87f3a3a6e1b40afbb599e585bfe13b2"
+
+content-hash = "e6144cea450ba70bd65cff5658949158518ae80172b0b03ef8df201eb5d982ce"
