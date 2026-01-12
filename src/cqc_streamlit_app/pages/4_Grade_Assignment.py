@@ -87,6 +87,80 @@ from cqc_cpcc.error_definitions_config import (
 )
 
 
+def run_async_in_streamlit(coro):
+    """Run an async coroutine safely within Streamlit.
+    
+    This function handles the case where Streamlit might already have
+    an event loop running. It tries different strategies to execute
+    the async code without causing "Event loop already running" errors.
+    
+    Args:
+        coro: Async coroutine to execute
+        
+    Returns:
+        Result of the coroutine
+        
+    Raises:
+        RuntimeError: If all execution strategies fail
+    """
+    try:
+        # First, try to check if there's a running loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we got here, there's a loop running
+            # We can't use asyncio.run() - try nest_asyncio if available
+            try:
+                import nest_asyncio
+                nest_asyncio.apply()
+                return loop.run_until_complete(coro)
+            except ImportError:
+                # nest_asyncio not available
+                # As a workaround, create a new thread to run the async code
+                import concurrent.futures
+                import threading
+                
+                logger.warning(
+                    "Event loop already running and nest_asyncio not available. "
+                    "Using thread-based workaround which may have limitations."
+                )
+                
+                result_container = []
+                exception_container = []
+                
+                def run_in_thread():
+                    try:
+                        # Create a new event loop for this thread
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            result = new_loop.run_until_complete(coro)
+                            result_container.append(result)
+                        finally:
+                            new_loop.close()
+                    except Exception as e:
+                        exception_container.append(e)
+                
+                thread = threading.Thread(target=run_in_thread)
+                thread.start()
+                thread.join()
+                
+                if exception_container:
+                    raise exception_container[0]
+                if result_container:
+                    return result_container[0]
+                raise RuntimeError("Thread execution completed without result")
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run()
+            return asyncio.run(coro)
+    except Exception as e:
+        logger.error(f"Failed to run async code in Streamlit: {e}", exc_info=True)
+        raise RuntimeError(
+            f"Failed to execute async code: {e}. "
+            "This may be due to event loop conflicts. "
+            "Consider installing nest_asyncio: pip install nest_asyncio"
+        ) from e
+
+
 def define_grading_rubric():
     st.header("Grading Rubric")
 
@@ -1218,9 +1292,10 @@ async def process_rubric_grading_batch(
             
             # Calculate statistics
             avg_score = summary_df["Points Earned"].mean()
-            if effective_rubric.total_points_possible > 0:
-                avg_pct = (avg_score / effective_rubric.total_points_possible * 100)
-                st.metric("Average Score", f"{avg_score:.1f}/{effective_rubric.total_points_possible} ({avg_pct:.1f}%)")
+            total_possible = effective_rubric.total_points_possible
+            if total_possible > 0:
+                avg_pct = (avg_score / total_possible * 100)
+                st.metric("Average Score", f"{avg_score:.1f}/{total_possible} ({avg_pct:.1f}%)")
             else:
                 logger.warning("Effective rubric has zero total_points_possible; skipping average percentage calculation.")
                 st.metric("Average Score", f"{avg_score:.1f}/0 (N/A%)")
@@ -1230,7 +1305,7 @@ async def process_rubric_grading_batch(
         _generate_feedback_docs_and_zip(
             all_results=all_results,
             course_name=course_name,
-            effective_rubric=effective_rubric,
+            total_points_possible=effective_rubric.total_points_possible,
             model_name=model_name,
             temperature=temperature,
             run_key=run_key
@@ -1592,6 +1667,9 @@ def display_rubric_assessment_result(result, student_name: str):
 def display_cached_grading_results(run_key: str, course_name: str) -> None:
     """Display cached grading results from session state.
     
+    This function renders cached results without instantiating any RubricModel.
+    It works solely with the RubricAssessmentResult objects stored in session state.
+    
     Args:
         run_key: The run key to retrieve cached results
         course_name: Course name for display and file naming
@@ -1619,18 +1697,22 @@ def display_cached_grading_results(run_key: str, course_name: str) -> None:
     # Display summary table
     summary_data = []
     for student_id, result in all_results:
-        # Calculate percentage safely
-        if result.total_points_possible > 0:
-            percentage = f"{(result.total_points_earned / result.total_points_possible * 100):.1f}%"
-        else:
+        # Calculate percentage safely - handle missing or invalid fields gracefully
+        try:
+            if result.total_points_possible > 0:
+                percentage = f"{(result.total_points_earned / result.total_points_possible * 100):.1f}%"
+            else:
+                percentage = "N/A"
+        except (AttributeError, TypeError, ZeroDivisionError) as e:
+            logger.warning(f"Error calculating percentage for {student_id}: {e}")
             percentage = "N/A"
         
         summary_data.append({
             "Student": student_id,
-            "Points Earned": result.total_points_earned,
-            "Points Possible": result.total_points_possible,
+            "Points Earned": getattr(result, 'total_points_earned', 0),
+            "Points Possible": getattr(result, 'total_points_possible', 0),
             "Percentage": percentage,
-            "Band": result.overall_band_label or "N/A",
+            "Band": getattr(result, 'overall_band_label', None) or "N/A",
         })
     
     if summary_data:
@@ -1638,9 +1720,15 @@ def display_cached_grading_results(run_key: str, course_name: str) -> None:
         summary_df = pd.DataFrame(summary_data)
         st.dataframe(summary_df, hide_index=True)
         
-        # Calculate statistics
+        # Calculate statistics - use cached result data directly
         avg_score = summary_df["Points Earned"].mean()
-        total_possible = all_results[0][1].total_points_possible  # Get from first result
+        # Get total_possible from first result, default to 100 if missing
+        try:
+            total_possible = all_results[0][1].total_points_possible
+        except (IndexError, AttributeError):
+            logger.warning("Could not extract total_points_possible from results, defaulting to 100")
+            total_possible = 100
+        
         if total_possible > 0:
             avg_pct = (avg_score / total_possible * 100)
             st.metric("Average Score", f"{avg_score:.1f}/{total_possible} ({avg_pct:.1f}%)")
@@ -1659,24 +1747,13 @@ def display_cached_grading_results(run_key: str, course_name: str) -> None:
             display_rubric_assessment_result(result, student_id)
     
     # Generate Word docs and ZIP download (uses cached ZIP if available)
-    # Note: We need to pass a minimal rubric object for compatibility
-    # In cached mode, we don't need the full rubric since results are already computed
+    # No rubric needed - all data comes from cached RubricAssessmentResult objects
     st.markdown("---")
-    
-    # Create a minimal placeholder rubric (won't be used for grading, just for file naming)
-    from cqc_cpcc.rubric_models import Rubric as RubricModel
-    placeholder_rubric = RubricModel(
-        rubric_id="cached",
-        title="Cached Results",
-        rubric_version=1,
-        total_points_possible=all_results[0][1].total_points_possible if all_results else 100,
-        criteria=[]
-    )
     
     _generate_feedback_docs_and_zip(
         all_results=all_results,
         course_name=course_name,
-        effective_rubric=placeholder_rubric,
+        total_points_possible=total_possible,
         model_name="cached",
         temperature=0.0,
         run_key=run_key
@@ -1686,7 +1763,7 @@ def display_cached_grading_results(run_key: str, course_name: str) -> None:
 def _generate_feedback_docs_and_zip(
     all_results: list[tuple[str, RubricAssessmentResult]],
     course_name: str,
-    effective_rubric: Rubric,
+    total_points_possible: int,
     model_name: str,
     temperature: float,
     run_key: str
@@ -1699,10 +1776,13 @@ def _generate_feedback_docs_and_zip(
     
     Results are cached in session state to prevent regeneration on UI interactions.
     
+    This function does NOT require a Rubric object - it works solely with
+    RubricAssessmentResult objects which contain all necessary data.
+    
     Args:
         all_results: List of (student_id, RubricAssessmentResult) tuples
         course_name: Course name for file naming
-        effective_rubric: Rubric used for grading
+        total_points_possible: Total points possible (for statistics display)
         model_name: Model name for file naming
         temperature: Temperature for file naming
         run_key: Stable key for caching ZIP bytes
@@ -1791,6 +1871,35 @@ def _generate_feedback_docs_and_zip(
 
 
 
+def grade_exam_content_sync():
+    """Sync wrapper for legacy exam grading workflow.
+    
+    This function wraps the async get_grade_exam_content() to make it
+    callable from Streamlit's synchronous main() function.
+    """
+    try:
+        return run_async_in_streamlit(get_grade_exam_content())
+    except Exception as e:
+        logger.error(f"Error in legacy exam grading: {e}", exc_info=True)
+        st.error(f"❌ Error: {e}")
+        st.error("If this persists, please check the logs or contact support.")
+
+
+def rubric_based_exam_grading_sync():
+    """Sync wrapper for rubric-based exam grading workflow.
+    
+    This function wraps the async get_rubric_based_exam_grading() to make it
+    callable from Streamlit's synchronous main() function without
+    causing "Event loop already running" errors.
+    """
+    try:
+        return run_async_in_streamlit(get_rubric_based_exam_grading())
+    except Exception as e:
+        logger.error(f"Error in rubric-based exam grading: {e}", exc_info=True)
+        st.error(f"❌ Error: {e}")
+        st.error("If this persists, please check the logs or contact support.")
+
+
 def main():
     st.set_page_config(layout="wide", page_title="Grade Assignment", page_icon="📝")  # TODO: Change the page icon
 
@@ -1812,13 +1921,13 @@ def main():
 
     with tab3:
         if st.session_state.openai_api_key:
-            asyncio.run(get_grade_exam_content())
+            grade_exam_content_sync()
         else:
             st.write("Please visit the Settings page and enter the OpenAPI Key to proceed")
     
     with tab4:
         if st.session_state.openai_api_key:
-            asyncio.run(get_rubric_based_exam_grading())
+            rubric_based_exam_grading_sync()
         else:
             st.write("Please visit the Settings page and enter the OpenAPI Key to proceed")
     
