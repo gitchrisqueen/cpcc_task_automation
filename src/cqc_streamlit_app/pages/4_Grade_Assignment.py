@@ -1079,6 +1079,9 @@ async def grade_single_rubric_student(
     # Check if "Expand All" was clicked
     expanded_state = st.session_state.get('expand_all_students', False)
     
+    # Track correlation ID for debug info
+    grading_correlation_id = None
+    
     with st.status(status_label, expanded=expanded_state) as status:
         try:
             # Build submission text from files
@@ -1101,6 +1104,12 @@ async def grade_single_rubric_student(
             # Grade with rubric
             status.update(label=f"{status_label} | Calling OpenAI...")
             
+            # Create correlation ID for tracking (will be used by OpenAI debug if enabled)
+            from cqc_cpcc.utilities.AI.openai_debug import create_correlation_id, should_debug
+            if should_debug():
+                grading_correlation_id = create_correlation_id()
+                logger.info(f"Starting grading for {student_id} with correlation_id={grading_correlation_id}")
+            
             result = await grade_with_rubric(
                 rubric=effective_rubric,
                 assignment_instructions=assignment_instructions,
@@ -1113,8 +1122,15 @@ async def grade_single_rubric_student(
             
             status.update(label=f"{status_label} | Processing results...")
             
-            # Display results
-            display_rubric_assessment_result(result, student_id)
+            # Log grading summary for debugging
+            logger.info(
+                f"Grading completed for {student_id}: "
+                f"{result.total_points_earned}/{result.total_points_possible} points "
+                f"({result.overall_band_label or 'No band'})"
+            )
+            
+            # Display results with debug information
+            display_rubric_assessment_result(result, student_id, correlation_id=grading_correlation_id)
             
             status.update(label=f"✅ {student_id} graded", state="complete")
             
@@ -1122,6 +1138,10 @@ async def grade_single_rubric_student(
             
         except Exception as e:
             logger.error(f"Error grading student {student_id}: {e}", exc_info=True)
+            
+            # Try to extract correlation_id from exception if available
+            if not grading_correlation_id:
+                grading_correlation_id = getattr(e, 'correlation_id', None)
             
             # Build error message with attempt count if available
             error_msg = str(e)
@@ -1133,9 +1153,8 @@ async def grade_single_rubric_student(
             
             # Show debug panel if available
             from cqc_streamlit_app.utils import render_openai_debug_panel
-            correlation_id = getattr(e, 'correlation_id', None)
-            if correlation_id:
-                render_openai_debug_panel(correlation_id=correlation_id, error=e)
+            if grading_correlation_id:
+                render_openai_debug_panel(correlation_id=grading_correlation_id, error=e)
             
             status.update(label=f"❌ Error: {student_id}", state="error")
             
@@ -1546,16 +1565,44 @@ async def get_rubric_based_exam_grading():
         display_cached_grading_results(current_run_key, f"{selected_course_id}_{selected_assignment_name}")
 
 
-def display_rubric_assessment_result(result, student_name: str):
+def display_rubric_assessment_result(result, student_name: str, correlation_id: Optional[str] = None):
     """Display rubric assessment results in a structured format.
     
     Args:
         result: RubricAssessmentResult from grading
         student_name: Name of the student for display
+        correlation_id: Optional correlation ID for OpenAI debug info (may not be available for successful grading)
     """
     from cqc_cpcc.student_feedback_builder import build_student_feedback
+    from cqc_cpcc.utilities.env_constants import CQC_OPENAI_DEBUG
     
     st.subheader(f"📊 Results for {student_name}")
+    
+    # Show debug panel placeholder if debug mode is on (even without correlation_id)
+    # The debug panel will check debug files for recent requests
+    if CQC_OPENAI_DEBUG:
+        from cqc_streamlit_app.utils import render_openai_debug_panel
+        # Show debug panel - it will find the latest request if correlation_id not provided
+        with st.expander("🔍 OpenAI Grading Debug Info", expanded=False):
+            if correlation_id:
+                st.markdown(f"**Correlation ID:** `{correlation_id}`")
+                render_openai_debug_panel(correlation_id=correlation_id, error=None)
+            else:
+                st.info(
+                    "Debug mode is enabled. To see request/response details, check the logs directory "
+                    "or ensure CQC_OPENAI_DEBUG environment variable is set before grading."
+                )
+                st.markdown(
+                    "**Recent Grading Info:**\n"
+                    f"- Total Points: {result.total_points_earned}/{result.total_points_possible}\n"
+                    f"- Band: {result.overall_band_label or 'N/A'}\n"
+                    f"- Criteria Assessed: {len(result.criteria_results)}\n"
+                    f"- Errors Detected: {len(result.detected_errors) if result.detected_errors else 0}"
+                )
+                if result.error_counts_by_severity:
+                    st.markdown("**Error Counts:**")
+                    for severity, count in result.error_counts_by_severity.items():
+                        st.markdown(f"  - {severity.capitalize()}: {count}")
     
     # Add Student Feedback section at the top (copy/paste-able)
     st.markdown("### 📝 Student Feedback (Copy/Paste)")
