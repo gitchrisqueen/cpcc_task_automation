@@ -113,11 +113,11 @@ class PreprocessingDigest(BaseModel):
 
 
 # Default retry configuration
-# IMPORTANT: Single-layer retry strategy
+# IMPORTANT: Single-layer retry strategy with multiple fallback attempts
 # - Attempt 1: Normal request with strict schema
-# - Attempt 2 (if retryable): Smart retry with fallback strategy
+# - Attempt 2-4 (if retryable): Smart retry with fallback strategy
 # - NO SDK-level retries (max_retries=0 in AsyncOpenAI client)
-DEFAULT_MAX_RETRIES = 1  # Total of 2 attempts (initial + 1 retry)
+DEFAULT_MAX_RETRIES = 3  # Total of 4 attempts (initial + 3 retries) for rubric grading
 DEFAULT_RETRY_DELAY = 1.0  # seconds
 DEFAULT_BACKOFF_MULTIPLIER = 2.0
 

@@ -284,12 +284,14 @@ async def grade_with_rubric(
     
     try:
         # Call OpenAI with structured output validation
+        # Uses 3 retries (4 total attempts) with smart fallback for robustness
         result = await get_structured_completion(
             prompt=prompt,
             model_name=model_name,
             schema_model=RubricAssessmentResult,
             temperature=temperature,
             max_tokens=DEFAULT_MAX_TOKENS,
+            max_retries=3,  # 3 retries = 4 total attempts (initial + 3 fallback)
         )
         
         # Log raw OpenAI response for debugging
