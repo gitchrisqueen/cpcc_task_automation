@@ -806,6 +806,7 @@ async def get_structured_completion(
                     "model": model_name,
                     "messages": [{"role": "user", "content": fallback_prompt}],
                     "response_format": {"type": "json_object"},  # Plain JSON, no schema
+                    "temperature": temperature,
                 }
                 logger.info("Using smart retry with fallback plain JSON (no strict schema)")
             else:
@@ -817,6 +818,7 @@ async def get_structured_completion(
                         "type": "json_schema",
                         "json_schema": json_schema,
                     },
+                    "temperature": temperature,
                 }
             
             # Add token limit parameter if specified
