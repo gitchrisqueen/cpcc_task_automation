@@ -269,6 +269,7 @@ def _normalize_fallback_json(data: dict, schema_model: Type[BaseModel]) -> dict:
     - Wrong field names (rubric_criterion_id -> criterion_id, criterion_title -> criterion_name)
     - Stringified JSON (detected_errors as string -> list, error_counts as string -> dict)
     - String numbers (original_major_errors: "2" -> 2)
+    - Inconsistent totals (recomputes total_points_earned from criteria_results for RubricAssessmentResult)
     
     Args:
         data: Raw JSON dict from fallback response
@@ -348,6 +349,37 @@ def _normalize_fallback_json(data: dict, schema_model: Type[BaseModel]) -> dict:
                 normalized[field] = int(normalized[field])
             except (ValueError, TypeError):
                 logger.warning(f"Failed to convert {field} to int, leaving as is")
+    
+    # CRITICAL: For RubricAssessmentResult, ensure total_points_earned matches sum of criteria
+    # This fixes validation errors like "total_points_earned (0) does not match sum of criteria (100)"
+    if schema_model.__name__ == "RubricAssessmentResult":
+        if "criteria_results" in normalized and isinstance(normalized["criteria_results"], list):
+            # Compute total from criteria
+            computed_total = 0
+            for criterion in normalized["criteria_results"]:
+                if isinstance(criterion, dict) and "points_earned" in criterion:
+                    try:
+                        points = criterion["points_earned"]
+                        if isinstance(points, (int, float)):
+                            computed_total += int(points)
+                        elif isinstance(points, str):
+                            computed_total += int(points)
+                    except (ValueError, TypeError):
+                        logger.warning(f"Failed to parse points_earned: {criterion.get('points_earned')}")
+            
+            # Override total_points_earned with computed value
+            if "total_points_earned" in normalized:
+                original_total = normalized["total_points_earned"]
+                if original_total != computed_total:
+                    logger.warning(
+                        f"Correcting total_points_earned from {original_total} to {computed_total} "
+                        f"(computed from criteria_results)"
+                    )
+                    normalized["total_points_earned"] = computed_total
+            else:
+                # Total wasn't provided at all - set it
+                logger.info(f"Setting total_points_earned to {computed_total} (computed from criteria_results)")
+                normalized["total_points_earned"] = computed_total
     
     return normalized
 

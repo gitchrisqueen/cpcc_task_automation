@@ -121,25 +121,28 @@ def _normalize_schema_recursive(schema: dict[str, Any]) -> None:
     if not isinstance(schema, dict):
         return
     
-    # Rule 1: If this node has "type": "object" OR has "properties",
-    # set additionalProperties: false AND fix required array
-    # Exception: Skip additionalProperties if already explicitly set
-    # (e.g., for dict fields)
-    is_object = schema.get("type") == "object" or "properties" in schema
+    # Rule 1: If this node has "properties", it's a structured object
+    # that needs both additionalProperties: false AND a complete required array.
+    # 
+    # IMPORTANT: For dict fields (type: "object" with additionalProperties but NO properties),
+    # we should NOT add a required array, as OpenAI strict mode doesn't expect it.
+    # Dict fields only need the additionalProperties schema to be normalized.
+    has_properties = "properties" in schema and isinstance(schema["properties"], dict)
     
-    if is_object:
+    if has_properties:
+        # This is a structured object with defined properties
+        
         # Sub-rule 1a: Add additionalProperties: false if not present
+        # (structured objects should not accept arbitrary extra properties)
         if "additionalProperties" not in schema:
-            # This is an object schema without additionalProperties - add it
             schema["additionalProperties"] = False
         
         # Sub-rule 1b: Fix required array to include ALL properties
         # OpenAI strict mode requires this even for optional fields
-        if "properties" in schema and isinstance(schema["properties"], dict):
-            all_property_keys = sorted(schema["properties"].keys())
-            # Always set required to ALL properties,
-            # regardless of what Pydantic marked
-            schema["required"] = all_property_keys
+        all_property_keys = sorted(schema["properties"].keys())
+        # Always set required to ALL properties,
+        # regardless of what Pydantic marked as required
+        schema["required"] = all_property_keys
     
     # Rule 2: Recurse into "properties" (nested object fields)
     if "properties" in schema and isinstance(schema["properties"], dict):
