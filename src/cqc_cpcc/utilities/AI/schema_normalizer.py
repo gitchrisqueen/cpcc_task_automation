@@ -71,6 +71,7 @@ def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
     For each object schema, it:
     - Sets "additionalProperties": false (if not already set)
     - Sets "required": [<all keys in properties>] (overwrites existing required)
+    - Derives required ONLY from properties.keys(), never from field names
     
     Args:
         schema: JSON schema dictionary (typically from Pydantic's model_json_schema())
@@ -78,6 +79,9 @@ def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Normalized schema with additionalProperties: false and complete required arrays
         on all objects
+        
+    Raises:
+        ValueError: If schema validation fails after normalization
         
     Example:
         >>> schema = {
@@ -92,13 +96,20 @@ def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
         >>> normalized["additionalProperties"]
         False
         >>> normalized["required"]
-        ['age', 'name']  # Now includes ALL properties (sorted)
+        ['name', 'age']  # Now includes ALL properties (in original order)
     """
     # Make a deep copy to avoid mutating the original schema
     normalized = deepcopy(schema)
     
     # Recursively normalize the schema
     _normalize_schema_recursive(normalized)
+    
+    # CRITICAL: Validate the normalized schema before returning
+    # This catches bugs early before OpenAI returns 400 errors
+    errors = validate_schema_for_openai(normalized)
+    if errors:
+        error_msg = "Schema normalization produced invalid schema for OpenAI:\n" + "\n".join(f"  - {e}" for e in errors)
+        raise ValueError(error_msg)
     
     return normalized
 
@@ -111,9 +122,10 @@ def _normalize_schema_recursive(schema: dict[str, Any]) -> None:
     for all object nodes.
     
     OpenAI Strict Mode Requirements:
-    - additionalProperties: false must be set on all objects
+    - additionalProperties: false must be set on all objects with properties
     - required: must be present and include ALL keys in properties
       (even optional fields that Pydantic marked as not required)
+    - required must be derived ONLY from properties.keys(), never from model field names
     
     Args:
         schema: Schema node to normalize (modified in-place)
@@ -127,7 +139,7 @@ def _normalize_schema_recursive(schema: dict[str, Any]) -> None:
     # IMPORTANT: For dict fields (type: "object" with additionalProperties but NO properties),
     # we should NOT add a required array, as OpenAI strict mode doesn't expect it.
     # Dict fields only need the additionalProperties schema to be normalized.
-    has_properties = "properties" in schema and isinstance(schema["properties"], dict)
+    has_properties = "properties" in schema and isinstance(schema["properties"], dict) and len(schema["properties"]) > 0
     
     if has_properties:
         # This is a structured object with defined properties
@@ -139,10 +151,16 @@ def _normalize_schema_recursive(schema: dict[str, Any]) -> None:
         
         # Sub-rule 1b: Fix required array to include ALL properties
         # OpenAI strict mode requires this even for optional fields
+        # CRITICAL: Build required from properties.keys() ONLY, never from field names
+        # This prevents alias mismatches (e.g., Python field "code_quality" vs JSON property "codeQuality")
         all_property_keys = sorted(schema["properties"].keys())
-        # Always set required to ALL properties,
-        # regardless of what Pydantic marked as required
+        # Always set required to ALL properties (sorted for consistency)
         schema["required"] = all_property_keys
+    elif schema.get("type") == "object" and "additionalProperties" not in schema:
+        # Rule 1c: Naked objects (type: "object" with no properties and no additionalProperties)
+        # These are incomplete schemas that need additionalProperties: false
+        # This makes them accept no properties at all (empty object)
+        schema["additionalProperties"] = False
     
     # Rule 2: Recurse into "properties" (nested object fields)
     if "properties" in schema and isinstance(schema["properties"], dict):
