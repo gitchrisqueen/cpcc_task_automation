@@ -43,10 +43,16 @@ class SimpleFeedback(BaseModel):
     improvements: list[str] = Field(description="List of areas for improvement")
 
 
+class QualityScore(BaseModel):
+    """Quality score for a specific category."""
+    category: str = Field(description="Quality category name")
+    score: int = Field(description="Score for this category")
+
+
 class CodeReview(BaseModel):
     """More complex nested model for testing structured outputs."""
     overall_rating: int = Field(description="Overall rating 1-5", ge=1, le=5)
-    code_quality: dict[str, int] = Field(description="Quality scores by category")
+    code_quality: list[QualityScore] = Field(description="Quality scores by category")
     suggestions: list[str] = Field(description="Specific improvement suggestions")
     compliant_with_requirements: bool = Field(description="Meets all requirements")
 
@@ -115,9 +121,10 @@ class TestOpenAIStructuredOutputBasics:
         # Verify structure
         assert isinstance(result, CodeReview)
         assert 1 <= result.overall_rating <= 5
-        assert isinstance(result.code_quality, dict)
+        assert isinstance(result.code_quality, list)
         assert len(result.code_quality) > 0
-        assert all(isinstance(v, int) for v in result.code_quality.values())
+        assert all(isinstance(item, QualityScore) for item in result.code_quality)
+        assert all(isinstance(item.category, str) and isinstance(item.score, int) for item in result.code_quality)
         assert isinstance(result.suggestions, list)
         assert isinstance(result.compliant_with_requirements, bool)
 
