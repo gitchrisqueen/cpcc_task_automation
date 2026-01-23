@@ -300,7 +300,7 @@ def _normalize_fallback_json(data: dict, schema_model: Type[BaseModel]) -> dict:
                         # If it's not JSON, wrap it in a list
                         criterion["evidence"] = [criterion["evidence"]] if criterion["evidence"] else None
     
-    # Normalize detected_errors if it's a stringified JSON array
+    # Normalize detected_errors if it's a stringified JSON array or list of strings
     if "detected_errors" in normalized:
         if isinstance(normalized["detected_errors"], str):
             try:
@@ -308,6 +308,46 @@ def _normalize_fallback_json(data: dict, schema_model: Type[BaseModel]) -> dict:
             except (json.JSONDecodeError, ValueError):
                 logger.warning(f"Failed to parse detected_errors as JSON, setting to None")
                 normalized["detected_errors"] = None
+        
+        # If detected_errors is a list of strings instead of DetectedError objects, convert them
+        if isinstance(normalized["detected_errors"], list):
+            converted_errors = []
+            for i, error in enumerate(normalized["detected_errors"]):
+                if isinstance(error, str):
+                    # Convert string to DetectedError object
+                    # Parse error_id from error_counts_by_id keys if available
+                    error_id = f"error_{i+1}"
+                    if "error_counts_by_id" in normalized and isinstance(normalized["error_counts_by_id"], dict):
+                        # Try to match error description with error_id keys
+                        for eid in normalized["error_counts_by_id"].keys():
+                            if eid.lower() in error.lower() or error.lower() in eid.lower():
+                                error_id = eid
+                                break
+                    
+                    # Determine severity from error_counts_by_severity or default to "minor"
+                    severity = "minor"  # default
+                    if "error_counts_by_severity" in normalized and isinstance(normalized["error_counts_by_severity"], dict):
+                        # If we have more major errors, assume this is major; otherwise minor
+                        major_count = normalized["error_counts_by_severity"].get("major", 0)
+                        minor_count = normalized["error_counts_by_severity"].get("minor", 0)
+                        if i < major_count:
+                            severity = "major"
+                    
+                    converted_errors.append({
+                        "code": error_id,
+                        "name": error.split('.')[0].strip() if '.' in error else error[:50],  # Use first sentence or first 50 chars as name
+                        "severity": severity,
+                        "description": error,
+                        "occurrences": 1,
+                        "notes": None
+                    })
+                elif isinstance(error, dict):
+                    # Already a dict, keep it
+                    converted_errors.append(error)
+            
+            if converted_errors:
+                normalized["detected_errors"] = converted_errors
+                logger.info(f"Converted {len(converted_errors)} string errors to DetectedError objects")
     
     # Normalize error_counts_by_severity if it's a stringified JSON object
     if "error_counts_by_severity" in normalized:
