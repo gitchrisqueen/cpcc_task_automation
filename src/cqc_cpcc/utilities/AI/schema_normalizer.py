@@ -54,7 +54,7 @@ from copy import deepcopy
 from typing import Any
 
 
-def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
+def normalize_json_schema_for_openai(schema: dict[str, Any], *, strip_title: bool = False) -> dict[str, Any]:
     """Normalize a JSON schema to be compatible with OpenAI Structured Outputs.
     
     This function recursively processes a JSON schema to ensure all object types
@@ -72,9 +72,11 @@ def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
     - Sets "additionalProperties": false (if not already set)
     - Sets "required": [<all keys in properties>] (overwrites existing required)
     - Derives required ONLY from properties.keys(), never from field names
+    - Optionally strips "title" fields if strip_title=True
     
     Args:
         schema: JSON schema dictionary (typically from Pydantic's model_json_schema())
+        strip_title: If True, removes "title" fields at root level (default: False)
         
     Returns:
         Normalized schema with additionalProperties: false and complete required arrays
@@ -96,10 +98,15 @@ def normalize_json_schema_for_openai(schema: dict[str, Any]) -> dict[str, Any]:
         >>> normalized["additionalProperties"]
         False
         >>> normalized["required"]
-        ['name', 'age']  # Now includes ALL properties (in original order)
+        ['age', 'name']  # Now includes ALL properties (sorted)
     """
     # Make a deep copy to avoid mutating the original schema
     normalized = deepcopy(schema)
+    
+    # Optionally strip root-level "title" field if requested
+    # This can help with certain OpenAI model compatibility issues
+    if strip_title and "title" in normalized:
+        del normalized["title"]
     
     # Recursively normalize the schema
     _normalize_schema_recursive(normalized)

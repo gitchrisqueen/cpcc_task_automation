@@ -860,6 +860,26 @@ async def get_structured_completion(
             # (e.g., GPT-5 models don't support temperature != 1)
             api_kwargs = sanitize_openai_params(model_name, api_kwargs)
             
+            # DEBUG: Log the exact schema being sent to OpenAI for troubleshooting
+            if attempt == 0:  # Only log on first attempt to avoid spam
+                import json
+                if "response_format" in api_kwargs and "json_schema" in api_kwargs["response_format"]:
+                    schema_to_send = api_kwargs["response_format"]["json_schema"]
+                    logger.debug(f"Sending schema to OpenAI: {json.dumps(schema_to_send, indent=2)}")
+                    # Validate properties vs required one more time
+                    if "schema" in schema_to_send:
+                        s = schema_to_send["schema"]
+                        if "properties" in s and "required" in s:
+                            props_set = set(s["properties"].keys())
+                            req_set = set(s["required"])
+                            if props_set != req_set:
+                                logger.error(
+                                    f"SCHEMA MISMATCH DETECTED: properties={sorted(props_set)}, "
+                                    f"required={sorted(req_set)}, "
+                                    f"extra_in_required={req_set - props_set}, "
+                                    f"missing_from_required={props_set - req_set}"
+                                )
+            
             # Record request for debugging
             if correlation_id:
                 record_request(
