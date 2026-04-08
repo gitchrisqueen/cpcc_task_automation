@@ -106,7 +106,7 @@ def build_rubric_grading_prompt(
             prompt_parts.append("**Performance Levels:**")
             for level in sorted(criterion.levels, key=lambda l: l.score_max, reverse=True):
                 prompt_parts.append(
-                    f"  - **{level.label}** ({level.score_min}-{level.score_max} points): {level.description}"
+                    f"  - **{level.label}** ({int(level.score_min)}-{int(level.score_max)} points): {level.description}"
                 )
     
     prompt_parts.append("")
@@ -115,7 +115,7 @@ def build_rubric_grading_prompt(
     if rubric.overall_bands:
         prompt_parts.append("### Overall Performance Bands")
         for band in sorted(rubric.overall_bands, key=lambda b: b.score_max, reverse=True):
-            prompt_parts.append(f"- **{band.label}**: {band.score_min}-{band.score_max} points")
+            prompt_parts.append(f"- **{band.label}**: {int(band.score_min)}-{int(band.score_max)} points")
         prompt_parts.append("")
     
     # Error definitions if provided
@@ -579,11 +579,16 @@ def apply_backend_scoring(rubric: Rubric, result: RubricAssessmentResult) -> Rub
         if rubric_criterion.criterion_id == "program_performance":
             # Dispatch to rubric-specific level selector
             if "CSC134" in rubric.course_ids:
-                # CSC134 C++ rubric: no error conversion, percentage-based levels
-                logger.info(f"Using CSC134 program_performance scoring with original_major={original_major}, original_minor={original_minor}")
+                # CSC134 C++ rubric: apply the rubric's configured normalization,
+                # then evaluate its rubric-specific performance thresholds.
+                logger.info(
+                    f"Using CSC134 program_performance scoring with effective_major={effective_major}, "
+                    f"effective_minor={effective_minor}"
+                )
                 level_label, score = select_csc134_program_performance_level(
-                    original_major,
-                    original_minor,
+                    effective_major,
+                    effective_minor,
+                    criterion=rubric_criterion,
                     assignment_submitted=True  # Assume submitted if we have a result
                 )
                 logger.info(f"CSC134 program_performance computed: level_label='{level_label}', score={score}")
