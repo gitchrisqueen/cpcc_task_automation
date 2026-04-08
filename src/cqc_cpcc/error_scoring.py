@@ -233,145 +233,240 @@ def get_error_count_for_severity(
 def select_program_performance_level(
     effective_major: int,
     effective_minor: int,
+    criterion: Optional[Criterion] = None,
     assignment_submitted: bool = True
 ) -> Tuple[str, int]:
-    """Select CSC151 program performance level based on effective error counts.
+    """Select program performance level based on effective error counts and rubric criterion.
     
-    Implements the CSC151 v2.0 rubric logic for selecting the appropriate
-    performance level label and score based on effective (normalized) error counts.
+    Implements the program_performance criterion scoring logic by:
+    1. Determining which performance level matches the error counts
+    2. Looking up that level's score range in the rubric criterion
+    3. Returning the midpoint score within the range
     
-    This function MUST be called AFTER normalize_errors() has been applied.
+    This function MUST be called AFTER normalize_errors() has been applied (for CSC151).
     
     Args:
         effective_major: Number of effective major errors (after normalization)
         effective_minor: Number of effective minor errors (after normalization)
+        criterion: The Criterion object with levels defined (required)
         assignment_submitted: Whether the assignment was submitted (default: True)
         
     Returns:
-        Tuple of (level_label, score) matching the rubric level
+        Tuple of (level_label, score) where score is the max of the selected level's range
+        
+    Raises:
+        ValueError: If criterion is None or lacks expected levels
         
     Example:
-        >>> select_program_performance_level(0, 0)
-        ('A+ (0 errors)', 98)
-        >>> select_program_performance_level(0, 1)
-        ('A (1 minor error)', 93)
-        >>> select_program_performance_level(1, 0)
-        ('B- (1 major error)', 75)
-        >>> select_program_performance_level(4, 0)
-        ('F (4+ major errors)', 8)
+        >>> criterion = Criterion(
+        ...     criterion_id="program_performance",
+        ...     name="Program Performance",
+        ...     max_points=100,
+        ...     levels=[
+        ...         PerformanceLevel(label="A+ (0 errors)", score_min=96, score_max=100),
+        ...         PerformanceLevel(label="A (1 minor error)", score_min=91, score_max=95),
+        ...         PerformanceLevel(label="B- (1 major error)", score_min=71, score_max=80),
+        ...         PerformanceLevel(label="0 (Not submitted)", score_min=0, score_max=0),
+        ...     ]
+        ... )
+        >>> label, score = select_program_performance_level(0, 0, criterion)
+        ('A+ (0 errors)', 100)  # MAx 90-100
+        >>> label, score = select_program_performance_level(1, 0, criterion)
+        ('B- (1 major error)', 75)  # MAx of 71-80
     """
+    if criterion is None:
+        raise ValueError(
+            "criterion parameter is required for select_program_performance_level. "
+            "The function needs the PerformanceLevel definitions to compute scores."
+        )
+    
+    if not criterion.levels:
+        raise ValueError(
+            f"Criterion '{criterion.criterion_id}' has no performance levels defined. "
+            f"Cannot select level without level definitions."
+        )
+    
     if not assignment_submitted:
+        # Find the "not submitted" level (typically score_min=0, score_max=0)
+        not_submitted_level = next(
+            (l for l in criterion.levels if l.score_min == 0 and l.score_max == 0),
+            None
+        )
+        if not_submitted_level:
+            return (not_submitted_level.label, 0)
         return ("0 (Not submitted or incomplete)", 0)
     
-    # Check for major errors first
+    # Determine which level matches the error counts
+    # Logic: Match label pattern to error counts
+    level_to_select = None
+    
     if effective_major == 0:
         # No major errors - check minor errors
         if effective_minor == 0:
-            return ("A+ (0 errors)", 98)  # Mid-point of 96-100
+            level_to_select = next((l for l in criterion.levels if "0 error" in l.label.lower()), None)
         elif effective_minor == 1:
-            return ("A (1 minor error)", 93)  # Mid-point of 91-95
+            level_to_select = next((l for l in criterion.levels if "1 minor error" in l.label.lower()), None)
         elif effective_minor == 2:
-            return ("A- (2 minor errors)", 88)  # Mid-point of 86-90
+            level_to_select = next((l for l in criterion.levels if "2 minor error" in l.label.lower()), None)
         elif effective_minor == 3:
-            return ("B (3 minor errors)", 83)  # Mid-point of 81-85
+            level_to_select = next((l for l in criterion.levels if "3 minor error" in l.label.lower()), None)
         else:
             # Should not happen if normalization is applied correctly (4+ minor should convert)
             logger.warning(
                 f"Unexpected state: {effective_minor} minor errors after normalization. "
                 f"Expected 0-3 minor errors."
             )
-            # Fall through to major error handling
     
-    # Has major errors
-    if effective_major == 1:
-        return ("B- (1 major error)", 75)  # Mid-point of 71-80
-    elif effective_major == 2:
-        return ("C (2 major errors)", 65)  # Mid-point of 61-70
-    elif effective_major == 3:
-        return ("D (3 major errors)", 38)  # Mid-point of 16-60
-    elif effective_major >= 4:
-        return ("F (4+ major errors)", 8)  # Mid-point of 1-15
+    # If no minor-only level matched, check major error levels
+    if level_to_select is None:
+        if effective_major == 1:
+            level_to_select = next((l for l in criterion.levels if "1 major error" in l.label.lower()), None)
+        elif effective_major == 2:
+            level_to_select = next((l for l in criterion.levels if "2 major error" in l.label.lower()), None)
+        elif effective_major == 3:
+            level_to_select = next((l for l in criterion.levels if "3 major error" in l.label.lower()), None)
+        elif effective_major >= 4:
+            level_to_select = next((l for l in criterion.levels if "4+" in l.label or "4 major" in l.label.lower()), None)
     
-    # Default case (should not reach here)
-    logger.warning(
-        f"Unexpected error counts: major={effective_major}, minor={effective_minor}. "
-        f"Defaulting to F level."
+    # Fallback: if no level matched, use the worst level (excluding "not submitted")
+    if level_to_select is None:
+        logger.warning(
+            f"Could not match error counts ({effective_major} major, {effective_minor} minor) to any level. "
+            f"Using worst level (lowest score)."
+        )
+        # Get all levels except "not submitted" and select the lowest score
+        non_zero_levels = [l for l in criterion.levels if not (l.score_min == 0 and l.score_max == 0)]
+        level_to_select = min(non_zero_levels, key=lambda l: l.score_max) if non_zero_levels else criterion.levels[0]
+
+    logger.debug(
+        f"Program performance level selection: major={effective_major}, minor={effective_minor} → "
+        f"'{level_to_select.label}' ({level_to_select.score_min}-{level_to_select.score_max}) → score={level_to_select.score_max}"
     )
-    return ("F (4+ major errors)", 8)
+    
+    return (level_to_select.label, level_to_select.score_max)
 
 
 
 def select_csc134_program_performance_level(
     major_error_count: int,
     minor_error_count: int,
+    criterion: Optional[Criterion] = None,
     assignment_submitted: bool = True
-) -> Tuple[str, int]:
+) -> Tuple[str, float]:
     """Select CSC134 C++ program performance level based on error counts.
 
-    Implements the CSC134 rubric logic using the official Program Performance
-    Rubric (percentage-based levels). No minor→major conversion is applied;
-    major and minor errors are evaluated independently.
+    Uses the rubric criterion's PerformanceLevel definitions to determine the
+    matching level label and its score_max.  Supports decimal score_max values
+    (e.g. 8.25, 4.50) as defined in the CSC134 v3 rubric (30-point scale).
 
-    Selection uses the worst-applicable level: the lowest (most penalized) level
-    whose condition is met by either major OR minor error count.
+    This selector does not perform minor→major conversion itself; it evaluates
+    whatever counts the caller provides. When a rubric defines error conversion,
+    backend scoring should normalize first and pass the effective counts here.
+    The worst-applicable level is selected when both major and minor counts
+    qualify for different tiers.
 
     Args:
-        major_error_count: Number of major errors detected (original, no conversion applied)
-        minor_error_count: Number of minor errors detected (original, no conversion applied)
-        assignment_submitted: Whether the assignment was submitted (default: True)
+        major_error_count: Number of major errors detected
+        minor_error_count: Number of minor errors detected
+        criterion: The ``program_performance`` Criterion from
+            ``csc134_cpp_exam_rubric`` (required).
+        assignment_submitted: Whether the assignment was submitted (default True)
 
     Returns:
-        Tuple of (level_label, score) matching the rubric level
+        Tuple of (level_label, score) where score is the ``score_max`` of the
+        matching PerformanceLevel.
 
-    Level thresholds (from official rubric):
-        - Outstanding  (100%): No errors
-        - Superior     (90%):  ≤2 minor errors, 0 major
-        - Above Average(80%):  3–4 minor errors, or 1 major error
-        - Average      (70%):  5 minor errors, or 2 major errors
-        - Below Average(55%):  >5 minor errors, or 3 major errors
-        - Needs Improvement(40%): 4 major errors
-        - Substandard  (27.5%→28 pts): 5 major errors
-        - Unsatisfactory(15%): 6+ major errors
-        - No Submission(0%):   Not submitted
+    Raises:
+        ValueError: If criterion is None or has no performance levels defined.
+
+    Level thresholds (CSC134 v3 rubric — 30-point scale):
+        - Outstanding  (score_max=30)   : No errors
+        - Superior     (score_max=27)   : ≤2 minor errors, 0 major
+        - Above Average(score_max=24)   : 3–4 minor errors or 1 major error
+        - Average      (score_max=21)   : 5 minor errors or 2 major errors
+        - Needs Improvement(score_max=12): >5 minor or 3–4 major errors
+        - Substandard  (score_max=8.25) : 5 major errors
+        - Unsatisfactory(score_max=4.50): 6+ major errors
+        - No Submission(score_max=0)    : Not submitted
+
+    Note:
+        In rubric v3 the old "Below Average" level was removed; the threshold
+        conditions that previously mapped to it (3 major or >5 minor) now map
+        to "Needs Improvement".
 
     Example:
-        >>> select_csc134_program_performance_level(0, 0)
-        ('Outstanding', 100)
-        >>> select_csc134_program_performance_level(0, 2)
-        ('Superior', 90)
-        >>> select_csc134_program_performance_level(1, 0)
-        ('Above Average', 80)
-        >>> select_csc134_program_performance_level(3, 0)
-        ('Below Average', 55)
-        >>> select_csc134_program_performance_level(0, 0, assignment_submitted=False)
-        ('No Submission', 0)
+        >>> from cqc_cpcc.rubric_config import get_rubric_by_id
+        >>> rubric = get_rubric_by_id("csc134_cpp_exam_rubric")
+        >>> criterion = rubric.criteria[0]
+        >>> select_csc134_program_performance_level(0, 0, criterion)
+        ('Outstanding', 30.0)
+        >>> select_csc134_program_performance_level(0, 2, criterion)
+        ('Superior', 27.0)
+        >>> select_csc134_program_performance_level(1, 0, criterion)
+        ('Above Average', 24.0)
+        >>> select_csc134_program_performance_level(5, 0, criterion)
+        ('Substandard', 8.25)
+        >>> select_csc134_program_performance_level(0, 0, criterion, assignment_submitted=False)
+        ('No Submission', 0.0)
     """
+    if criterion is None:
+        raise ValueError(
+            "criterion parameter is required for select_csc134_program_performance_level. "
+            "Pass the program_performance Criterion from csc134_cpp_exam_rubric."
+        )
+
+    if not criterion.levels:
+        raise ValueError(
+            f"Criterion '{criterion.criterion_id}' has no performance levels defined."
+        )
+
+    # Build label → level lookup for O(1) access
+    levels_by_label = {level.label: level for level in criterion.levels}
+
+    def _score_for(label: str) -> float:
+        """Return score_max for the named level, with a safe fallback."""
+        level = levels_by_label.get(label)
+        if level is None:
+            logger.warning(
+                f"Level label '{label}' not found in criterion '{criterion.criterion_id}'. "
+                f"Falling back to lowest non-zero level."
+            )
+            non_zero = [l for l in criterion.levels if not (l.score_min == 0 and l.score_max == 0)]
+            return float(min(non_zero, key=lambda l: l.score_max).score_max) if non_zero else 0.0
+        return float(level.score_max)
+
     if not assignment_submitted:
-        return ("No Submission", 0)
+        label = "No Submission"
+        return (label, _score_for(label))
 
-    # Major errors take priority from worst to best
+    # Determine level — evaluate worst condition first (major errors take priority)
     if major_error_count >= 6:
-        return ("Unsatisfactory", 15)  # 15% of 100
+        label = "Unsatisfactory"
     elif major_error_count == 5:
-        return ("Substandard", 28)  # 27.5% of 100, rounded
-    elif major_error_count == 4:
-        return ("Needs Improvement", 40)  # 40% of 100
-
-    # Combined check: select worst-applicable level using either major or minor count
-    if major_error_count == 3 or minor_error_count > 5:
-        return ("Below Average", 55)  # 55% of 100
+        label = "Substandard"
+    elif major_error_count >= 3 or minor_error_count > 5:
+        # 3–4 major, or >5 minor — maps to "Needs Improvement" in rubric v3
+        # (rubric v2 called this threshold "Below Average"; the level no longer exists)
+        label = "Needs Improvement"
     elif major_error_count == 2 or minor_error_count == 5:
-        return ("Average", 70)  # 70% of 100
+        label = "Average"
     elif major_error_count == 1 or (3 <= minor_error_count <= 4):
-        return ("Above Average", 80)  # 80% of 100
+        label = "Above Average"
     elif minor_error_count <= 2:
-        if minor_error_count == 0:
-            return ("Outstanding", 100)  # 100% of 100
-        return ("Superior", 90)  # 90% of 100
+        label = "Outstanding" if minor_error_count == 0 else "Superior"
+    else:
+        logger.warning(
+            f"Unexpected CSC134 error counts: major={major_error_count}, minor={minor_error_count}. "
+            f"Defaulting to lowest non-zero level."
+        )
+        non_zero = [l for l in criterion.levels if not (l.score_min == 0 and l.score_max == 0)]
+        worst = min(non_zero, key=lambda l: l.score_max) if non_zero else criterion.levels[0]
+        return (worst.label, float(worst.score_max))
 
-    # Default (should not reach here)
-    logger.warning(
-        f"Unexpected error counts in CSC134 scoring: "
-        f"major={major_error_count}, minor={minor_error_count}. Defaulting to Below Average."
+    score = _score_for(label)
+    logger.debug(
+        f"CSC134 level selection: major={major_error_count}, minor={minor_error_count} → "
+        f"'{label}' score_max={score}"
     )
-    return ("Below Average", 55)
+    return (label, score)
+
