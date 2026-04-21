@@ -161,6 +161,20 @@ def _parse_allowed_models() -> list[str] | None:
     return allowed_models or None
 
 
+def _get_auto_router_component_class(components):
+    """Return a compatible OpenRouter auto-router plugin component class."""
+    for component_name in (
+        "ChatGenerationParamsPluginAutoRouter",
+        "ChatRequestPluginAutoRouter",
+    ):
+        component_class = getattr(components, component_name, None)
+        if component_class is not None:
+            return component_class
+    raise AttributeError(
+        "No compatible auto-router plugin component found in openrouter.components"
+    )
+
+
 def get_openrouter_plugins() -> Optional[list]:
     """Get OpenRouter plugins configuration for auto-router.
     
@@ -184,8 +198,10 @@ def get_openrouter_plugins() -> Optional[list]:
     if not allowed_models:
         return None
     
+    auto_router_component_cls = _get_auto_router_component_class(components)
+
     return [
-        components.ChatGenerationParamsPluginAutoRouter(
+        auto_router_component_cls(
             id="auto-router",
             allowed_models=allowed_models,
         )
