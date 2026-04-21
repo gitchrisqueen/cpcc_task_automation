@@ -184,12 +184,19 @@ def get_openrouter_plugins() -> Optional[list]:
     if not allowed_models:
         return None
     
-    return [
-        components.ChatGenerationParamsPluginAutoRouter(
-            id="auto-router",
-            allowed_models=allowed_models,
+    plugin_class = getattr(components, "ChatGenerationParamsPluginAutoRouter", None)
+    if plugin_class is None:
+        plugin_class = getattr(components, "ChatRequestPluginAutoRouter", None)
+    if plugin_class is None:
+        plugin_class = getattr(components, "AutoRouterPlugin", None)
+    if plugin_class is None:
+        raise AttributeError(
+            "OpenRouter SDK missing auto-router plugin class "
+            "(expected ChatGenerationParamsPluginAutoRouter, "
+            "ChatRequestPluginAutoRouter, or AutoRouterPlugin)"
         )
-    ]
+
+    return [plugin_class(id="auto-router", allowed_models=allowed_models)]
 
 
 async def get_openrouter_completion(
