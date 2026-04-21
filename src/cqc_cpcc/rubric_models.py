@@ -35,7 +35,14 @@ Usage:
 """
 
 from typing import Optional, Annotated, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator, computed_field
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationInfo,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class PerformanceLevel(BaseModel):
@@ -418,7 +425,9 @@ class RubricAssessmentResult(BaseModel):
     
     @field_validator('total_points_earned')
     @classmethod
-    def validate_total_earned(cls, total_earned: float | None, info) -> float | None:
+    def validate_total_earned(
+        cls, total_earned: float | None, info: ValidationInfo
+    ) -> float | None:
         """Validate that total_points_earned <= total_points_possible."""
         if info.data and 'total_points_possible' in info.data:
             total_possible = info.data['total_points_possible']
