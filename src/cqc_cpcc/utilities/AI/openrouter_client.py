@@ -184,6 +184,8 @@ def get_openrouter_plugins() -> Optional[list]:
     if not allowed_models:
         return None
     
+    # OpenRouter SDK renamed the auto-router plugin class across versions:
+    # ChatGenerationParamsPluginAutoRouter -> ChatRequestPluginAutoRouter -> AutoRouterPlugin.
     plugin_class = getattr(components, "ChatGenerationParamsPluginAutoRouter", None)
     if plugin_class is None:
         plugin_class = getattr(components, "ChatRequestPluginAutoRouter", None)
