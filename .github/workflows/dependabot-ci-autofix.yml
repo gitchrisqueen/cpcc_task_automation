@@ -48,18 +48,26 @@ jobs:
               return
             }
 
-            const marker = `<!-- dependabot-ci-autofix:${run.id} -->`
+            const marker = `<!-- dependabot-ci-autofix:${pr.head.sha} -->`
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            })
+            const hasExistingRequest = comments.some((comment) =>
+              typeof comment.body === 'string' && comment.body.includes(marker)
+            )
+            if (hasExistingRequest) {
+              core.info(`Auto-fix request already exists for PR #${prNumber} at head ${pr.head.sha}; skipping.`)
+              return
+            }
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: `${marker}\n@copilot CI workflow **${run.name}** failed for this Dependabot PR. Please investigate, apply the minimal fix, and push updates so auto-merge can proceed.\n\nFailed run: ${run.html_url}`,
+              body: `${marker}\n@copilot CI workflow **${run.name}** failed for this Dependabot PR. Please investigate, apply the minimal fix, and push updates so auto-merge can proceed.\n\nFailed run: ${run.html_url}\n\nCI will automatically run again when fixes are pushed.`,
             })
 
-            await github.rest.actions.reRunWorkflowFailedJobs({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: run.id,
-            })
-
-            core.info(`Requested Copilot fix and re-ran failed jobs for PR #${prNumber}`)
+            core.info(`Requested Copilot fix for PR #${prNumber}`)

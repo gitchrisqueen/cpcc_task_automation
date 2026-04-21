@@ -37,7 +37,7 @@ The following CI workflows run on every PR:
 
 6. **Dependabot CI Auto-Fix Trigger** (`.github/workflows/dependabot-ci-autofix.yml`)
    - Listens for failed CI runs on Dependabot `chore(deps)` PRs
-   - Automatically comments `@copilot` on the PR and re-runs failed jobs once
+   - Automatically comments `@copilot` on the PR (deduplicated per PR head SHA)
    - Keeps auto-merge moving without waiting on manual intervention
 
 ---
