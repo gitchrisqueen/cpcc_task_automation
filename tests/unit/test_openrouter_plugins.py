@@ -16,6 +16,14 @@ from cqc_cpcc.utilities.AI.openrouter_client import (
     get_openrouter_plugins,
 )
 
+AUTO_ROUTER_PLUGIN_CLASS = getattr(
+    components, "ChatGenerationParamsPluginAutoRouter", None
+)
+if AUTO_ROUTER_PLUGIN_CLASS is None:
+    AUTO_ROUTER_PLUGIN_CLASS = getattr(components, "ChatRequestPluginAutoRouter", None)
+if AUTO_ROUTER_PLUGIN_CLASS is None:
+    AUTO_ROUTER_PLUGIN_CLASS = getattr(components, "AutoRouterPlugin")
+
 
 class SimpleResponse(BaseModel):
     """Simple test response model."""
@@ -47,7 +55,7 @@ class TestOpenRouterPlugins:
             assert result is not None
             assert len(result) == 1
             # Check that it's an SDK component
-            assert isinstance(result[0], components.ChatGenerationParamsPluginAutoRouter)
+            assert isinstance(result[0], AUTO_ROUTER_PLUGIN_CLASS)
             assert result[0].id == 'auto-router'
             assert result[0].allowed_models == ['anthropic/claude-3-opus']
     
@@ -59,7 +67,7 @@ class TestOpenRouterPlugins:
             
             assert result is not None
             assert len(result) == 1
-            assert isinstance(result[0], components.ChatGenerationParamsPluginAutoRouter)
+            assert isinstance(result[0], AUTO_ROUTER_PLUGIN_CLASS)
             assert result[0].id == 'auto-router'
             assert result[0].allowed_models == ['google/gemini-*']
     
@@ -72,7 +80,7 @@ class TestOpenRouterPlugins:
             
             assert result is not None
             assert len(result) == 1
-            assert isinstance(result[0], components.ChatGenerationParamsPluginAutoRouter)
+            assert isinstance(result[0], AUTO_ROUTER_PLUGIN_CLASS)
             assert result[0].id == 'auto-router'
             assert len(result[0].allowed_models) == 3
             assert 'google/gemini-*' in result[0].allowed_models
@@ -122,7 +130,7 @@ class TestOpenRouterPlugins:
             # Verify structure matches OpenRouter SDK requirements
             assert isinstance(result, list)
             assert len(result) == 1
-            assert isinstance(result[0], components.ChatGenerationParamsPluginAutoRouter)
+            assert isinstance(result[0], AUTO_ROUTER_PLUGIN_CLASS)
             assert result[0].id == 'auto-router'
             assert isinstance(result[0].allowed_models, list)
     
