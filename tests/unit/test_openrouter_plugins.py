@@ -17,7 +17,6 @@ from cqc_cpcc.utilities.AI.openrouter_client import (
     get_openrouter_plugins,
 )
 
-
 AUTO_ROUTER_COMPONENT_CLASS = _get_auto_router_component_class(components)
 
 

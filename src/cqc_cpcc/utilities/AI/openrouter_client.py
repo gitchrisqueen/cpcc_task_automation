@@ -196,11 +196,11 @@ def get_openrouter_plugins() -> Optional[list]:
         >>> # Returns [ChatGenerationParamsPluginAutoRouter(id='auto-router', allowed_models=[...])]
     """
     from openrouter import components
-    
+
     allowed_models = _parse_allowed_models()
     if not allowed_models:
         return None
-    
+
     auto_router_component_cls = _get_auto_router_component_class(components)
 
     return [
