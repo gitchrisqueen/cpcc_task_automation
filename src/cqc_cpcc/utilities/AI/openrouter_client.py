@@ -166,12 +166,15 @@ def _get_auto_router_component_class(components):
     for component_name in (
         "ChatGenerationParamsPluginAutoRouter",
         "ChatRequestPluginAutoRouter",
+        "AutoRouterPlugin",
     ):
         component_class = getattr(components, component_name, None)
         if component_class is not None:
             return component_class
     raise AttributeError(
-        "No compatible auto-router plugin component found in openrouter.components"
+        "OpenRouter SDK missing auto-router plugin class "
+        "(expected ChatGenerationParamsPluginAutoRouter, "
+        "ChatRequestPluginAutoRouter, or AutoRouterPlugin)"
     )
 
 

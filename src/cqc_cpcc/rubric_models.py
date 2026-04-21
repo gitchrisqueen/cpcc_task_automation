@@ -59,7 +59,7 @@ class PerformanceLevel(BaseModel):
     @classmethod
     def validate_score_range(cls, score_max: float, info) -> float:
         """Validate that score_max >= score_min."""
-        if 'score_min' in info.data:
+        if info.data and 'score_min' in info.data:
             score_min = info.data['score_min']
             if score_max < score_min:
                 raise ValueError(f"score_max ({score_max}) must be >= score_min ({score_min})")
@@ -221,7 +221,7 @@ class OverallBand(BaseModel):
     @classmethod
     def validate_score_range(cls, score_max: float, info) -> float:
         """Validate that score_max >= score_min."""
-        if 'score_min' in info.data:
+        if info.data and 'score_min' in info.data:
             score_min = info.data['score_min']
             if score_max < score_min:
                 raise ValueError(f"score_max ({score_max}) must be >= score_min ({score_min})")
